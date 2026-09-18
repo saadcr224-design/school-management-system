@@ -1,0 +1,23 @@
+{
+  "short_name": "Shezad Academy",
+  "name": "Shezad Children Academy - School Management System",
+  "description": "Comprehensive School & College Management System for Shezad Children Academy",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#122241",
+  "theme_color": "#122241",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "/"
+}

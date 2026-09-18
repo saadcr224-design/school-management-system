@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#122241" />
+      <stop offset="100%" stop-color="#091326" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#grad)" />
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(245, 158, 11, 0.25)" stroke-width="6" stroke-dasharray="10 8" />
+  <g transform="translate(106, 126) scale(12.5)">
+    <path d="M12 2L1 7l11 5 9-4.09V17h2V7L12 2z" fill="url(#gold)" />
+    <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="#ffffff" />
+  </g>
+  <text x="256" y="440" text-anchor="middle" fill="#f59e0b" font-family="'Outfit', 'Segoe UI', sans-serif" font-size="28" font-weight="bold" letter-spacing="3">SHEZAD ACADEMY</text>
+</svg>
