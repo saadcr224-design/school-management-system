@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, getStudentYearlyFeeLedger } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
 import StudentDetailsModal from './StudentDetailsModal';
 
@@ -28,17 +28,18 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
     reason: 'Annual session fee revision'
   });
 
-  // Calculate each student's fee summary
+  // Calculate each student's fee summary using complete 12-month academic year ledger
   const studentsWithFeeStats = useMemo(() => {
     return students.map(student => {
-      const studentSlips = feeSlips.filter(s => s.studentId === student.id || s.rollNo === student.rollNo);
-      const billed = studentSlips.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-      const paid = studentSlips.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
-      const initialBal = student.balance || 0;
-      const outstanding = Math.max(0, billed - paid) + (studentSlips.length === 0 ? initialBal : 0);
+      const yearlyLedger = getStudentYearlyFeeLedger(student, feeSlips);
+      const billed = yearlyLedger.totals.totalAnnualFee;
+      const paid = yearlyLedger.totals.totalPaid;
+      const outstanding = yearlyLedger.totals.totalRemaining;
       const isFeePaid = outstanding === 0;
 
-      // Find latest unpaid slip if any
+      // Find first unpaid month / slip
+      const firstUnpaidMonth = yearlyLedger.months.find(m => m.status !== 'Paid');
+      const studentSlips = feeSlips.filter(s => s.studentId === student.id || s.rollNo === student.rollNo);
       const latestUnpaidSlip = studentSlips.find(s => s.status !== 'Paid' || (s.totalAmount - (s.amountPaid || 0) > 0));
 
       return {
@@ -48,6 +49,8 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
         outstandingBalance: outstanding,
         isFeePaid,
         feeStatus: isFeePaid ? 'Paid' : 'Unpaid',
+        yearlyLedger,
+        firstUnpaidMonth,
         latestUnpaidSlip
       };
     });
@@ -580,21 +583,21 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
       {/* MODAL 1: OVERALL STUDENT FEE STRUCTURE & COMPLETE FINANCIAL HISTORY */}
       {activeFeeStructureStudent && (() => {
-        const studentSlips = feeSlips.filter(s => s.studentId === activeFeeStructureStudent.id || s.rollNo === activeFeeStructureStudent.rollNo);
-        const totalBilled = studentSlips.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-        const totalPaid = studentSlips.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
-        const outstandingBalance = Math.max(0, totalBilled - totalPaid);
+        const studentLedger = getStudentYearlyFeeLedger(activeFeeStructureStudent, feeSlips);
+        const totalBilled = studentLedger.totals.totalAnnualFee;
+        const totalPaid = studentLedger.totals.totalPaid;
+        const outstandingBalance = studentLedger.totals.totalRemaining;
 
         return (
           <div className="modal-overlay" onClick={() => setActiveFeeStructureStudent(null)}>
-            <div className="modal-content wide" style={{ maxWidth: '850px', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content wide" style={{ maxWidth: '900px', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-header" style={{ background: '#0f1d38', color: '#fff', padding: '16px 20px' }}>
                 <div>
                   <h3 className="modal-title" style={{ color: '#fff' }}>
-                    💰 Complete Student Fee Structure & Ledger
+                    💰 Complete Student Fee Structure & Yearly Ledger
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-                    {activeFeeStructureStudent.name} ({activeFeeStructureStudent.rollNo}) — {activeFeeStructureStudent.campus} Campus
+                    {activeFeeStructureStudent.name} ({activeFeeStructureStudent.rollNo}) — {activeFeeStructureStudent.campus} Campus · Session 2026–2027 (April → March)
                   </p>
                 </div>
                 <button className="modal-close-btn" style={{ color: '#fff' }} onClick={() => setActiveFeeStructureStudent(null)}>✕</button>
@@ -619,13 +622,13 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                   </div>
 
                   <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#166534', textTransform: 'uppercase', fontWeight: '700' }}>TOTAL PAID TO DATE</span>
+                    <span style={{ fontSize: '0.72rem', color: '#166534', textTransform: 'uppercase', fontWeight: '700' }}>TOTAL PAID (12 MOS)</span>
                     <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#059669' }}>Rs {totalPaid.toLocaleString()}</div>
                   </div>
 
-                  <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#991b1b', textTransform: 'uppercase', fontWeight: '700' }}>CURRENT BALANCE</span>
-                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#dc2626' }}>Rs {outstandingBalance.toLocaleString()}</div>
+                  <div style={{ background: outstandingBalance > 0 ? '#fef2f2' : '#f8fafc', padding: '12px', borderRadius: '8px', border: `1px solid ${outstandingBalance > 0 ? '#fecaca' : '#e2e8f0'}` }}>
+                    <span style={{ fontSize: '0.72rem', color: outstandingBalance > 0 ? '#991b1b' : '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>OUTSTANDING BALANCE</span>
+                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: outstandingBalance > 0 ? '#dc2626' : '#059669' }}>Rs {outstandingBalance.toLocaleString()}</div>
                   </div>
                 </div>
 
@@ -640,7 +643,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                     <div>
                       <strong>Fee Payment Status:</strong>{' '}
                       {outstandingBalance === 0 ? (
-                        <span className="status-badge badge-paid">✓ Fully Paid</span>
+                        <span className="status-badge badge-paid">✓ Fully Cleared (12 Months)</span>
                       ) : (
                         <span className="status-badge badge-unpaid">! Rs {outstandingBalance.toLocaleString()} Pending</span>
                       )}
@@ -648,61 +651,115 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                   </div>
                 </div>
 
-                {/* Chronological Fee Slips History */}
+                {/* Complete 12-Month Academic Year Financial Ledger */}
                 <h4 style={{ margin: '0 0 10px', fontSize: '0.94rem', color: '#0f1d38', fontWeight: '800' }}>
-                  📄 Fee Challan History ({studentSlips.length} Vouchers)
+                  📜 Full Academic Year Ledger (April 2026 → March 2027)
                 </h4>
-                <div className="table-responsive" style={{ marginBottom: '20px' }}>
-                  <table className="custom-table" style={{ fontSize: '0.82rem' }}>
-                    <thead>
+                <div className="table-responsive" style={{ marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table className="custom-table" style={{ fontSize: '0.82rem', margin: 0 }}>
+                    <thead style={{ background: '#0f1d38', color: '#ffffff' }}>
                       <tr>
-                        <th>Challan #</th>
-                        <th>Month</th>
-                        <th>Class (At Time)</th>
-                        <th>Tuition</th>
-                        <th>Transport</th>
-                        <th>Exam/Misc</th>
-                        <th>Discount</th>
-                        <th>Net Payable</th>
-                        <th>Paid</th>
-                        <th>Status</th>
+                        <th style={{ color: '#fff' }}>#</th>
+                        <th style={{ color: '#fff' }}>Academic Month</th>
+                        <th style={{ color: '#fff' }}>Ref/Challan</th>
+                        <th style={{ color: '#fff' }}>Tuition</th>
+                        <th style={{ color: '#fff' }}>Transport</th>
+                        <th style={{ color: '#fff' }}>Discount</th>
+                        <th style={{ color: '#fff' }}>Net Fee</th>
+                        <th style={{ color: '#fff' }}>Paid</th>
+                        <th style={{ color: '#fff' }}>Remaining</th>
+                        <th style={{ color: '#fff' }}>Status</th>
+                        <th style={{ color: '#fff', textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {studentSlips.map(slip => (
-                        <tr key={slip.id}>
-                          <td style={{ fontWeight: '700' }}>{slip.challanNo}</td>
-                          <td style={{ fontWeight: '700', color: '#0369a1' }}>{slip.month}</td>
-                          <td><strong>{slip.classGrade}</strong></td>
-                          <td>Rs {slip.tuitionFee?.toLocaleString()}</td>
-                          <td>Rs {Number(slip.transportFee || 0).toLocaleString()}</td>
-                          <td>Rs {(Number(slip.examFee || 0) + Number(slip.miscCharges || 0) + Number(slip.admissionFee || 0)).toLocaleString()}</td>
-                          <td style={{ color: slip.discount > 0 ? '#059669' : '#64748b' }}>
-                            {slip.discount > 0 ? `-Rs ${slip.discount?.toLocaleString()}` : '—'}
+                      {studentLedger.months.map((m, i) => (
+                        <tr key={m.fullMonthLabel} style={{ background: m.status === 'Paid' ? '#ffffff' : '#fffdf5' }}>
+                          <td style={{ fontWeight: '700', color: '#64748b' }}>{i + 1}</td>
+                          <td style={{ fontWeight: '700', color: '#0f1d38' }}>{m.fullMonthLabel}</td>
+                          <td style={{ color: m.challanNo !== '—' ? '#0284c7' : '#94a3b8' }}>{m.challanNo}</td>
+                          <td>Rs {m.tuitionFee?.toLocaleString()}</td>
+                          <td style={{ color: m.transportFee > 0 ? '#0284c7' : '#64748b' }}>
+                            {m.transportFee > 0 ? `Rs ${m.transportFee?.toLocaleString()}` : '—'}
                           </td>
-                          <td style={{ fontWeight: '700' }}>Rs {slip.totalAmount?.toLocaleString()}</td>
-                          <td style={{ color: '#059669', fontWeight: '700' }}>Rs {slip.amountPaid?.toLocaleString()}</td>
+                          <td style={{ color: m.discount > 0 ? '#059669' : '#64748b' }}>
+                            {m.discount > 0 ? `-Rs ${m.discount?.toLocaleString()}` : '—'}
+                          </td>
+                          <td style={{ fontWeight: '700', color: '#0f1d38' }}>Rs {m.totalAmount?.toLocaleString()}</td>
+                          <td style={{ color: '#059669', fontWeight: '700' }}>Rs {m.amountPaid?.toLocaleString()}</td>
+                          <td style={{ color: m.remaining > 0 ? '#dc2626' : '#059669', fontWeight: '800' }}>
+                            Rs {m.remaining?.toLocaleString()}
+                          </td>
                           <td>
-                            <span className={`status-badge ${slip.status === 'Paid' ? 'badge-paid' : slip.status === 'Partial' ? 'badge-partial' : 'badge-unpaid'}`}>
-                              {slip.status}
+                            <span className={`status-badge ${m.status === 'Paid' ? 'badge-paid' : m.status === 'Partial' ? 'badge-partial' : 'badge-unpaid'}`}>
+                              {m.status}
                             </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {m.status !== 'Paid' && onOpenPaymentModal && (
+                              <button
+                                type="button"
+                                className="action-btn-primary"
+                                style={{ padding: '3px 8px', fontSize: '0.72rem', background: '#059669', borderColor: '#059669', whiteSpace: 'nowrap' }}
+                                onClick={() => {
+                                  setActiveFeeStructureStudent(null);
+                                  if (m.slipId) {
+                                    const slip = feeSlips.find(s => s.id === m.slipId);
+                                    if (slip) onOpenPaymentModal(slip);
+                                  } else {
+                                    onOpenPaymentModal({
+                                      id: 'virtual-' + activeFeeStructureStudent.id + '-' + m.month,
+                                      studentId: activeFeeStructureStudent.id,
+                                      studentName: activeFeeStructureStudent.name,
+                                      rollNo: activeFeeStructureStudent.rollNo,
+                                      classGrade: activeFeeStructureStudent.classGrade,
+                                      section: activeFeeStructureStudent.section,
+                                      campus: activeFeeStructureStudent.campus,
+                                      month: m.fullMonthLabel,
+                                      tuitionFee: m.tuitionFee,
+                                      transportFee: m.transportFee,
+                                      subtotal: m.subtotal,
+                                      discount: 0,
+                                      totalAmount: m.remaining,
+                                      amountPaid: 0,
+                                      phone: activeFeeStructureStudent.phone,
+                                      status: 'Unpaid'
+                                    });
+                                  }
+                                }}
+                              >
+                                💳 Pay (Rs {m.remaining.toLocaleString()})
+                              </button>
+                            )}
+                            {m.status === 'Paid' && (
+                              <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>✓ Cleared</span>
+                            )}
                           </td>
                         </tr>
                       ))}
-                      {studentSlips.length === 0 && (
-                        <tr>
-                          <td colSpan="10" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>
-                            No fee challans generated yet for this student.
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
+                    <tfoot style={{ background: '#f8fafc', fontWeight: '800', borderTop: '2px solid #cbd5e1' }}>
+                      <tr>
+                        <td colSpan="3">ANNUAL TOTALS</td>
+                        <td>Rs {studentLedger.totals.totalTuition.toLocaleString()}</td>
+                        <td>Rs {studentLedger.totals.totalTransport.toLocaleString()}</td>
+                        <td style={{ color: '#059669' }}>-Rs {studentLedger.totals.totalDiscount.toLocaleString()}</td>
+                        <td style={{ color: '#0f1d38' }}>Rs {studentLedger.totals.totalAnnualFee.toLocaleString()}</td>
+                        <td style={{ color: '#059669' }}>Rs {studentLedger.totals.totalPaid.toLocaleString()}</td>
+                        <td style={{ color: studentLedger.totals.totalRemaining > 0 ? '#dc2626' : '#059669' }}>
+                          Rs {studentLedger.totals.totalRemaining.toLocaleString()}
+                        </td>
+                        <td colSpan="2" style={{ textAlign: 'right', color: '#64748b' }}>
+                          {studentLedger.totals.paidMonthsCount}/12 Months Paid
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
 
                 {/* Fee Structure Change History Log */}
                 <h4 style={{ margin: '0 0 10px', fontSize: '0.94rem', color: '#0f1d38', fontWeight: '800' }}>
-                  📜 Fee Structure Update History
+                  📜 Fee Structure Revision Log
                 </h4>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
                   {activeFeeStructureStudent.feeHistory && activeFeeStructureStudent.feeHistory.length > 0 ? (
@@ -731,20 +788,26 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                       onClick={() => {
                         const st = activeFeeStructureStudent;
                         setActiveFeeStructureStudent(null);
-                        const sSlip = studentSlips.find(s => s.status !== 'Paid' || (s.totalAmount - (s.amountPaid || 0) > 0));
-                        if (sSlip) {
-                          onOpenPaymentModal(sSlip);
-                        } else {
-                          onOpenPaymentModal({
-                            studentId: st.id,
-                            studentName: st.name,
-                            rollNo: st.rollNo,
-                            classGrade: st.classGrade,
-                            section: st.section,
-                            campus: st.campus,
-                            phone: st.phone
-                          });
+                        const firstUnpaid = studentLedger.months.find(m => m.status !== 'Paid');
+                        if (firstUnpaid && firstUnpaid.slipId) {
+                          const sSlip = feeSlips.find(s => s.id === firstUnpaid.slipId);
+                          if (sSlip) {
+                            onOpenPaymentModal(sSlip);
+                            return;
+                          }
                         }
+                        onOpenPaymentModal({
+                          id: 'virtual-' + st.id + '-' + (firstUnpaid ? firstUnpaid.month : 'current'),
+                          studentId: st.id,
+                          studentName: st.name,
+                          rollNo: st.rollNo,
+                          classGrade: st.classGrade,
+                          section: st.section,
+                          campus: st.campus,
+                          month: firstUnpaid ? firstUnpaid.fullMonthLabel : 'April 2026',
+                          totalAmount: outstandingBalance > 0 ? outstandingBalance : ((st.monthlyFee || 4500) + (st.transportFee || 0)),
+                          phone: st.phone
+                        });
                       }}
                     >
                       💳 Pay Student Fee ({outstandingBalance > 0 ? `Rs ${outstandingBalance.toLocaleString()}` : `Rs ${(activeFeeStructureStudent.monthlyFee || 4500).toLocaleString()}`})

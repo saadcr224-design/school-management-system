@@ -30,6 +30,152 @@ export function getAcademicMonthYear(monthName, baseYear = 2026) {
   return `${monthName} ${year}`;
 }
 
+// Complete 12-Month Academic Year Financial Ledger (April–March)
+export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear = '2026-2027') {
+  if (!student) return { months: [], totals: {} };
+
+  const startYear = parseInt(academicYear.split('-')[0]) || 2026;
+  const endYear = startYear + 1;
+
+  // Student specific slips
+  const studentSlips = (feeSlips || []).filter(s => s.studentId === student.id || s.rollNo === student.rollNo);
+
+  const monthsLedger = ACADEMIC_MONTHS.map((monthName) => {
+    // April to December are in startYear, January to March are in endYear
+    const isNextYear = ['January', 'February', 'March'].includes(monthName);
+    const monthYear = isNextYear ? endYear : startYear;
+    const fullMonthLabel = `${monthName} ${monthYear}`;
+
+    // Find matching slips for this month
+    const matchingSlips = studentSlips.filter(s => {
+      if (!s.month) return false;
+      const mStr = s.month.toLowerCase();
+      const monthLower = monthName.toLowerCase();
+      if (mStr.includes(monthLower)) {
+        if (mStr.includes(String(monthYear)) || (!mStr.includes(String(startYear)) && !mStr.includes(String(endYear)))) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (matchingSlips.length > 0) {
+      // Aggregate if multiple slips/payments exist for this month
+      const tuitionFee = matchingSlips.reduce((sum, s) => sum + (Number(s.tuitionFee) || 0), 0);
+      const transportFee = matchingSlips.reduce((sum, s) => sum + (Number(s.transportFee) || 0), 0);
+      const admissionFee = matchingSlips.reduce((sum, s) => sum + (Number(s.admissionFee) || 0), 0);
+      const examFee = matchingSlips.reduce((sum, s) => sum + (Number(s.examFee) || 0), 0);
+      const miscCharges = matchingSlips.reduce((sum, s) => sum + (Number(s.miscCharges) || 0), 0);
+      const miscDescription = matchingSlips.map(s => s.miscDescription).filter(Boolean).join(', ');
+      const discount = matchingSlips.reduce((sum, s) => sum + (Number(s.discount) || 0), 0);
+      const discountReason = matchingSlips.map(s => s.discountReason).filter(Boolean).join(', ');
+      
+      const subtotal = tuitionFee + transportFee + admissionFee + examFee + miscCharges;
+      const totalAmount = matchingSlips.reduce((sum, s) => sum + (Number(s.totalAmount) || Math.max(0, subtotal - discount)), 0);
+      const amountPaid = matchingSlips.reduce((sum, s) => sum + (Number(s.amountPaid) || 0), 0);
+      const remaining = Math.max(0, totalAmount - amountPaid);
+      
+      let status = 'Unpaid';
+      if (totalAmount > 0 && amountPaid >= totalAmount) {
+        status = 'Paid';
+      } else if (amountPaid > 0) {
+        status = 'Partial';
+      }
+
+      // Collect payment dates, receipts, methods
+      const paymentDates = matchingSlips.map(s => s.paidDate).filter(Boolean);
+      const paymentMethods = matchingSlips.map(s => s.paymentMethod).filter(Boolean);
+      const paymentRemarks = matchingSlips.map(s => s.paymentRemarks || s.notes).filter(Boolean);
+      const challanNos = matchingSlips.map(s => s.challanNo).filter(Boolean);
+      const slipIds = matchingSlips.map(s => s.id);
+
+      return {
+        month: monthName,
+        year: monthYear,
+        fullMonthLabel,
+        isGenerated: true,
+        slipId: slipIds[0],
+        slipIds,
+        challanNo: challanNos.join(', '),
+        tuitionFee,
+        transportFee,
+        admissionFee,
+        examFee,
+        miscCharges,
+        miscDescription,
+        discount,
+        discountReason,
+        subtotal,
+        totalAmount,
+        amountPaid,
+        remaining,
+        status,
+        paidDate: paymentDates.join(', ') || '—',
+        paymentMethod: paymentMethods.join(', ') || '—',
+        paymentRemarks: paymentRemarks.join(', ') || '—',
+        slips: matchingSlips
+      };
+    } else {
+      // Unpaid month that hasn't had a manual challan issued yet:
+      // Must still appear individually and be included in annual totals as required!
+      const tuitionFee = Number(student.monthlyFee) || 0;
+      const transportFee = (student.isTransport || Number(student.transportFee) > 0) ? (Number(student.transportFee) || 0) : 0;
+      const admissionFee = 0;
+      const examFee = 0;
+      const miscCharges = 0;
+      const discount = 0;
+      const subtotal = tuitionFee + transportFee;
+      const totalAmount = subtotal;
+      const amountPaid = 0;
+      const remaining = totalAmount;
+
+      return {
+        month: monthName,
+        year: monthYear,
+        fullMonthLabel,
+        isGenerated: false,
+        slipId: null,
+        slipIds: [],
+        challanNo: '—',
+        tuitionFee,
+        transportFee,
+        admissionFee,
+        examFee,
+        miscCharges,
+        miscDescription: '',
+        discount,
+        discountReason: '',
+        subtotal,
+        totalAmount,
+        amountPaid,
+        remaining,
+        status: 'Unpaid',
+        paidDate: '—',
+        paymentMethod: '—',
+        paymentRemarks: 'Pending billing',
+        slips: []
+      };
+    }
+  });
+
+  const totals = {
+    totalTuition: monthsLedger.reduce((sum, m) => sum + m.tuitionFee, 0),
+    totalTransport: monthsLedger.reduce((sum, m) => sum + m.transportFee, 0),
+    totalAdmission: monthsLedger.reduce((sum, m) => sum + m.admissionFee, 0),
+    totalExam: monthsLedger.reduce((sum, m) => sum + m.examFee, 0),
+    totalMisc: monthsLedger.reduce((sum, m) => sum + m.miscCharges, 0),
+    totalDiscount: monthsLedger.reduce((sum, m) => sum + m.discount, 0),
+    totalAnnualFee: monthsLedger.reduce((sum, m) => sum + m.totalAmount, 0),
+    totalPaid: monthsLedger.reduce((sum, m) => sum + m.amountPaid, 0),
+    totalRemaining: monthsLedger.reduce((sum, m) => sum + m.remaining, 0),
+    paidMonthsCount: monthsLedger.filter(m => m.status === 'Paid').length,
+    partialMonthsCount: monthsLedger.filter(m => m.status === 'Partial').length,
+    unpaidMonthsCount: monthsLedger.filter(m => m.status === 'Unpaid').length,
+  };
+
+  return { months: monthsLedger, totals };
+}
+
 const INITIAL_CAMPUSES = [
   { id: 'ABB', name: 'Abbottabad Campus (Main)', code: 'ABB', city: 'Abbottabad', address: 'Main Mansehra Road, Abbottabad', status: 'Active' },
   { id: 'NOW', name: 'Nowshera Campus', code: 'NOW', city: 'Nowshera', address: 'Grand Trunk Rd, Nowshera', status: 'Active' },
@@ -1262,10 +1408,13 @@ export function AppProvider({ children }) {
     return newSlips;
   };
 
-  // Pay Fee Slip with Instant Recalculation & Two-System Sync
-  const payFeeSlip = (slipId, amountPaid, paymentMethod = 'Cash at Counter', remarks = '') => {
+  // Pay Fee Slip with Instant Recalculation, Partial Payment History & Multi-System Sync
+  const payFeeSlip = (slipId, amountPaid, paymentMethod = 'Cash at Counter', remarks = '', paymentDate = null, receiptNo = '') => {
     const collectedAmount = Number(amountPaid) || 0;
     if (collectedAmount <= 0) return;
+
+    const payDate = paymentDate || new Date().toISOString().split('T')[0];
+    const rcp = receiptNo || ('RCP-' + Math.floor(1000 + Math.random() * 9000));
 
     let targetSlip = null;
     let updatedFeeSlips = [];
@@ -1277,13 +1426,27 @@ export function AppProvider({ children }) {
           const totalAmt = Number(slip.totalAmount || 0);
           const newPaid = currentPaid + collectedAmount;
           const newStatus = newPaid >= totalAmt ? 'Paid' : (newPaid > 0 ? 'Partial' : 'Unpaid');
+          const existingHistory = Array.isArray(slip.paymentHistory) ? slip.paymentHistory : [];
+          
           targetSlip = {
             ...slip,
             amountPaid: newPaid,
             status: newStatus,
             paymentMethod,
             paymentRemarks: remarks,
-            paidDate: new Date().toISOString().split('T')[0]
+            paidDate: payDate,
+            receiptNo: rcp,
+            paymentHistory: [
+              ...existingHistory,
+              {
+                date: payDate,
+                amount: collectedAmount,
+                method: paymentMethod,
+                receiptNo: rcp,
+                remarks: remarks,
+                recordedAt: new Date().toISOString()
+              }
+            ]
           };
           return targetSlip;
         }
@@ -1314,8 +1477,8 @@ export function AppProvider({ children }) {
 
       // Post to General Ledger automatically
       const ledgerEntry = {
-        date: new Date().toISOString().split('T')[0],
-        description: `Fee Collection: ${targetSlip.studentName} (${targetSlip.rollNo}) - ${targetSlip.month}`,
+        date: payDate,
+        description: `Fee Collection: ${targetSlip.studentName} (${targetSlip.rollNo}) - ${targetSlip.month} [${rcp}]`,
         category: 'Fee Collection',
         campus: targetSlip.campus,
         type: 'Credit',
@@ -1333,11 +1496,90 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Update existing fee slip (recalculates totals and student balances)
+  const updateFeeSlip = (id, updatedData) => {
+    let targetSlip = null;
+    let updatedFeeSlips = [];
+
+    setFeeSlips(prev => {
+      updatedFeeSlips = prev.map(slip => {
+        if (slip.id === id) {
+          const tuition = updatedData.tuitionFee !== undefined ? Number(updatedData.tuitionFee) : Number(slip.tuitionFee || 0);
+          const transport = updatedData.transportFee !== undefined ? Number(updatedData.transportFee) : Number(slip.transportFee || 0);
+          const admission = updatedData.admissionFee !== undefined ? Number(updatedData.admissionFee) : Number(slip.admissionFee || 0);
+          const exam = updatedData.examFee !== undefined ? Number(updatedData.examFee) : Number(slip.examFee || 0);
+          const misc = updatedData.miscCharges !== undefined ? Number(updatedData.miscCharges) : Number(slip.miscCharges || 0);
+          const discount = updatedData.discount !== undefined ? Number(updatedData.discount) : Number(slip.discount || 0);
+          const amountPaid = updatedData.amountPaid !== undefined ? Number(updatedData.amountPaid) : Number(slip.amountPaid || 0);
+
+          const subtotal = tuition + transport + admission + exam + misc;
+          const totalAmount = updatedData.totalAmount !== undefined ? Number(updatedData.totalAmount) : Math.max(0, subtotal - discount);
+          const status = amountPaid >= totalAmount && totalAmount > 0 ? 'Paid' : (amountPaid > 0 ? 'Partial' : 'Unpaid');
+
+          targetSlip = {
+            ...slip,
+            ...updatedData,
+            tuitionFee: tuition,
+            transportFee: transport,
+            admissionFee: admission,
+            examFee: exam,
+            miscCharges: misc,
+            discount,
+            subtotal,
+            totalAmount,
+            amountPaid,
+            status
+          };
+          return targetSlip;
+        }
+        return slip;
+      });
+      return updatedFeeSlips;
+    });
+
+    if (targetSlip) {
+      syncDocToFirestore('feeSlips', id, targetSlip);
+
+      // Recalculate student balance
+      setStudents(prev => prev.map(std => {
+        if (std.id === targetSlip.studentId || std.rollNo === targetSlip.rollNo) {
+          const stdSlips = updatedFeeSlips.filter(s => s.studentId === std.id || s.rollNo === std.rollNo);
+          const totalBilled = stdSlips.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+          const totalPaid = stdSlips.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0);
+          const newBalance = Math.max(0, totalBilled - totalPaid);
+          const updatedStd = { ...std, balance: newBalance, totalBilled, totalPaid };
+          syncDocToFirestore('students', std.id, updatedStd);
+          return updatedStd;
+        }
+        return std;
+      }));
+
+      showToast(`✓ Fee Challan ${targetSlip.challanNo} updated successfully`, 'success');
+    }
+  };
+
   const deleteFeeSlip = (id) => {
     const target = feeSlips.find(s => s.id === id);
-    setFeeSlips(prev => prev.filter(s => s.id !== id));
+    const updatedFeeSlips = feeSlips.filter(s => s.id !== id);
+    setFeeSlips(updatedFeeSlips);
     removeDocFromFirestore('feeSlips', id);
-    showToast(`✓ Fee Challan ${target ? target.challanNo : ''} deleted`, 'danger');
+
+    if (target) {
+      setStudents(prev => prev.map(std => {
+        if (std.id === target.studentId || std.rollNo === target.rollNo) {
+          const stdSlips = updatedFeeSlips.filter(s => s.studentId === std.id || s.rollNo === std.rollNo);
+          const totalBilled = stdSlips.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
+          const totalPaid = stdSlips.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0);
+          const newBalance = Math.max(0, totalBilled - totalPaid);
+          const updatedStd = { ...std, balance: newBalance, totalBilled, totalPaid };
+          syncDocToFirestore('students', std.id, updatedStd);
+          return updatedStd;
+        }
+        return std;
+      }));
+    }
+
+    showToast(`✓ Fee Challan ${target ? target.challanNo : ''} deleted and student balance recalculated`, 'danger');
   };
 
   // --- Staff & Salary Actions ---
@@ -1585,7 +1827,9 @@ export function AppProvider({ children }) {
       generateFeeSlip,
       generateBatchFeeSlips,
       payFeeSlip,
+      updateFeeSlip,
       deleteFeeSlip,
+      getStudentYearlyFeeLedger,
       siblingDiscountRules,
       updateSiblingDiscountRules,
       ledger,

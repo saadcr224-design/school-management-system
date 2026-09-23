@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear } from '../context/AppContext';
+import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear, getStudentYearlyFeeLedger } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
 
 const CLASSES = [
@@ -74,9 +74,9 @@ export default function ReportsView() {
     };
   });
 
-  // 2. Selected Student Ledger Data
+  // 2. Selected Student 12-Month Academic Year Ledger
   const targetStudent = students.find(s => s.id === selectedStudentId) || students[0];
-  const studentLedgerSlips = feeSlips.filter(s => s.studentId === targetStudent?.id || s.rollNo === targetStudent?.rollNo);
+  const targetStudentLedger = getStudentYearlyFeeLedger(targetStudent, feeSlips);
 
   // 3. Outstanding Defaulters
   const outstandingSlips = filteredFeeSlips.filter(s => s.status !== 'Paid' || (s.totalAmount - (s.amountPaid || 0) > 0));
@@ -337,59 +337,101 @@ export default function ReportsView() {
         </div>
       )}
 
-      {/* REPORT 2: STUDENT OVERALL FEE REPORT */}
+      {/* REPORT 2: COMPLETE 12-MONTH STUDENT YEARLY FEE LEDGER */}
       {activeReportTab === 'student' && (
         <div className="section-card">
-          <div className="section-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="section-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <h3 className="chart-title">👤 Student Financial Profile & Ledger</h3>
+              <h3 className="chart-title">👤 Student Complete Academic Year Financial Ledger (April 2026 → March 2027)</h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                {targetStudent ? `${targetStudent.name} (${targetStudent.rollNo}) · Class ${targetStudent.classGrade} · Phone: ${targetStudent.phone}` : 'Select a student'}
+                {targetStudent ? `${targetStudent.name} (${targetStudent.rollNo}) · Class ${targetStudent.classGrade} · Campus: ${targetStudent.campus} · Phone: ${targetStudent.phone}` : 'Select a student'}
               </p>
             </div>
+            {targetStudent && (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <span className="status-badge badge-active" style={{ fontSize: '0.82rem', padding: '4px 12px' }}>
+                  Total Annual: Rs {targetStudentLedger.totals.totalAnnualFee.toLocaleString()}
+                </span>
+                <span className="status-badge badge-paid" style={{ fontSize: '0.82rem', padding: '4px 12px' }}>
+                  Paid: Rs {targetStudentLedger.totals.totalPaid.toLocaleString()}
+                </span>
+                <span className={`status-badge ${targetStudentLedger.totals.totalRemaining > 0 ? 'badge-unpaid' : 'badge-paid'}`} style={{ fontSize: '0.82rem', padding: '4px 12px' }}>
+                  Remaining: Rs {targetStudentLedger.totals.totalRemaining.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="table-responsive">
-            <table className="custom-table">
+            <table className="custom-table" style={{ fontSize: '0.83rem' }}>
               <thead>
                 <tr>
-                  <th>Challan #</th>
-                  <th>Month</th>
-                  <th>Class</th>
+                  <th>#</th>
+                  <th>Academic Month</th>
+                  <th>Challan / Ref #</th>
                   <th>Tuition</th>
                   <th>Transport</th>
-                  <th>Admission</th>
-                  <th>Exam/Misc</th>
+                  <th>Adm/Exam/Misc</th>
                   <th>Discount</th>
-                  <th>Net Payable</th>
-                  <th>Paid</th>
+                  <th>Net Monthly Fee</th>
+                  <th>Amount Paid</th>
                   <th>Remaining</th>
                   <th>Status</th>
+                  <th>Payment Date</th>
                 </tr>
               </thead>
               <tbody>
-                {studentLedgerSlips.map(s => {
-                  const remaining = Math.max(0, (s.totalAmount || 0) - (s.amountPaid || 0));
+                {targetStudentLedger.months.map((m, idx) => {
+                  const miscAndAdm = (m.admissionFee || 0) + (m.examFee || 0) + (m.miscCharges || 0);
                   return (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: '700' }}>{s.challanNo}</td>
-                      <td style={{ fontWeight: '700', color: '#0369a1' }}>{s.month}</td>
-                      <td>{s.classGrade}</td>
-                      <td>Rs {Number(s.tuitionFee || 0).toLocaleString()}</td>
-                      <td>Rs {Number(s.transportFee || 0).toLocaleString()}</td>
-                      <td>Rs {Number(s.admissionFee || 0).toLocaleString()}</td>
-                      <td>Rs {(Number(s.examFee || 0) + Number(s.miscCharges || 0)).toLocaleString()}</td>
-                      <td style={{ color: s.discount > 0 ? '#059669' : '#64748b' }}>{s.discount > 0 ? `-Rs ${s.discount}` : '—'}</td>
-                      <td style={{ fontWeight: '700' }}>Rs {s.totalAmount?.toLocaleString()}</td>
-                      <td style={{ color: '#059669', fontWeight: '700' }}>Rs {s.amountPaid?.toLocaleString()}</td>
-                      <td style={{ color: remaining > 0 ? '#dc2626' : '#64748b', fontWeight: '700' }}>Rs {remaining.toLocaleString()}</td>
+                    <tr key={m.fullMonthLabel} style={{ background: m.status === 'Paid' ? '#ffffff' : '#fffdf5' }}>
+                      <td style={{ fontWeight: '700', color: '#64748b' }}>{idx + 1}</td>
+                      <td style={{ fontWeight: '700', color: '#0f1d38' }}>{m.fullMonthLabel}</td>
+                      <td style={{ color: m.challanNo !== '—' ? '#0284c7' : '#94a3b8' }}>{m.challanNo}</td>
+                      <td>Rs {m.tuitionFee?.toLocaleString()}</td>
+                      <td style={{ color: m.transportFee > 0 ? '#0284c7' : '#64748b' }}>
+                        {m.transportFee > 0 ? `Rs ${m.transportFee.toLocaleString()}` : '—'}
+                      </td>
+                      <td style={{ color: miscAndAdm > 0 ? '#d97706' : '#64748b' }}>
+                        {miscAndAdm > 0 ? `Rs ${miscAndAdm.toLocaleString()}` : '—'}
+                      </td>
+                      <td style={{ color: m.discount > 0 ? '#059669' : '#64748b' }}>
+                        {m.discount > 0 ? `-Rs ${m.discount.toLocaleString()}` : '—'}
+                      </td>
+                      <td style={{ fontWeight: '700', color: '#0f1d38' }}>Rs {m.totalAmount?.toLocaleString()}</td>
+                      <td style={{ color: '#059669', fontWeight: '700' }}>Rs {m.amountPaid?.toLocaleString()}</td>
+                      <td style={{ color: m.remaining > 0 ? '#dc2626' : '#059669', fontWeight: '800' }}>
+                        Rs {m.remaining?.toLocaleString()}
+                      </td>
                       <td>
-                        <span className={`status-badge ${s.status === 'Paid' ? 'badge-paid' : 'badge-unpaid'}`}>{s.status}</span>
+                        <span className={`status-badge ${m.status === 'Paid' ? 'badge-paid' : m.status === 'Partial' ? 'badge-partial' : 'badge-unpaid'}`}>
+                          {m.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                        {m.paidDate !== '—' ? m.paidDate : '—'}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
+              <tfoot style={{ background: '#f8fafc', fontWeight: '800', borderTop: '2px solid #cbd5e1' }}>
+                <tr>
+                  <td colSpan="3">ANNUAL TOTALS (12 Months)</td>
+                  <td>Rs {targetStudentLedger.totals.totalTuition.toLocaleString()}</td>
+                  <td>Rs {targetStudentLedger.totals.totalTransport.toLocaleString()}</td>
+                  <td>Rs {(targetStudentLedger.totals.totalAdmission + targetStudentLedger.totals.totalExam + targetStudentLedger.totals.totalMisc).toLocaleString()}</td>
+                  <td style={{ color: '#059669' }}>-Rs {targetStudentLedger.totals.totalDiscount.toLocaleString()}</td>
+                  <td style={{ color: '#0f1d38', fontSize: '0.9rem' }}>Rs {targetStudentLedger.totals.totalAnnualFee.toLocaleString()}</td>
+                  <td style={{ color: '#059669', fontSize: '0.9rem' }}>Rs {targetStudentLedger.totals.totalPaid.toLocaleString()}</td>
+                  <td style={{ color: targetStudentLedger.totals.totalRemaining > 0 ? '#dc2626' : '#059669', fontSize: '0.9rem' }}>
+                    Rs {targetStudentLedger.totals.totalRemaining.toLocaleString()}
+                  </td>
+                  <td colSpan="2" style={{ textAlign: 'right', color: '#64748b' }}>
+                    {targetStudentLedger.totals.paidMonthsCount}/12 Months Paid
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
