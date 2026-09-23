@@ -22,8 +22,8 @@ const CLASSES = [
 
 export default function GenerateFeeModal({ isOpen, onClose }) {
   const { 
-    allStudents, 
-    campuses, 
+    allStudents = [], 
+    campuses = [], 
     generateFeeSlip, 
     generateBatchFeeSlips, 
     siblingDiscountRules = { sibling1: 0, sibling2: 25, sibling3: 50, sibling4Plus: 75 },

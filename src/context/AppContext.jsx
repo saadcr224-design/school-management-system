@@ -1317,7 +1317,7 @@ export function AppProvider({ children }) {
     const subtotal = tuition + transport + admission + exam + misc;
     const netTotal = Math.max(0, subtotal - discount);
 
-    const targetStudent = allStudents.find(s => s.id === slipData.studentId || s.rollNo === slipData.rollNo);
+    const targetStudent = students.find(s => s.id === slipData.studentId || s.rollNo === slipData.rollNo);
 
     const newSlip = {
       ...slipData,
@@ -1359,7 +1359,7 @@ export function AppProvider({ children }) {
       }));
     }
 
-    showToast(`✓ Fee Challan ${newSlip.challanNo} generated for ${newSlip.studentName}`, 'success');
+    showToast(`✓ Fee Challan ${newSlip.challanNo} generated for ${newSlip.studentName || (targetStudent ? targetStudent.name : 'Student')}`, 'success');
     return newSlip;
   };
 
@@ -1375,7 +1375,7 @@ export function AppProvider({ children }) {
       const subtotal = tuition + transport + admission + exam + misc;
       const netTotal = Math.max(0, subtotal - discount);
 
-      const targetStudent = allStudents.find(s => s.id === slipData.studentId || s.rollNo === slipData.rollNo);
+      const targetStudent = students.find(s => s.id === slipData.studentId || s.rollNo === slipData.rollNo);
 
       const slipObj = {
         ...slipData,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function CollectPaymentModal({ slip, isOpen = false, onClose }) {
-  const { payFeeSlip, allStudents, feeSlips, showToast, generateFeeSlip, campuses } = useApp();
+  const { payFeeSlip, allStudents = [], feeSlips = [], showToast, generateFeeSlip, campuses = [] } = useApp();
   
   // Determine if this is opened for a specific pre-existing voucher or the general counter
   const hasSpecificSlip = Boolean(slip && slip.id && !String(slip.id).startsWith('virtual-') && slip.studentId);
