@@ -37,15 +37,6 @@ export default function Navbar({ onOpenAdmissionModal, onOpenFeeModal }) {
       </div>
 
       <div className="navbar-right">
-        {/* Firebase Live Status Pill */}
-        <div 
-          className={`firebase-pill ${firebaseConnected ? 'connected' : 'local'}`}
-          onClick={() => setActiveTab('settings')}
-          title="Click to view/configure Firebase connection settings"
-        >
-          <span className={`status-dot ${firebaseConnected ? 'green' : 'yellow'}`}></span>
-          <span>{firebaseConnected ? `Firebase Live (${firebaseInfo.projectId || 'Connected'})` : 'Local Storage Mode'}</span>
-        </div>
 
         <button 
           className="action-btn-secondary"

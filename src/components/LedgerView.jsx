@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function LedgerView() {
-  const { ledger, addLedgerEntry, campuses } = useApp();
+  const { ledger, addLedgerEntry, deleteLedgerEntry, campuses } = useApp();
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [voucherToDelete, setVoucherToDelete] = useState(null);
   
   // Add Manual Entry Modal
   const [isOpenAddModal, setIsOpenAddModal] = useState(false);
@@ -199,6 +200,7 @@ export default function LedgerView() {
                 <th>Type</th>
                 <th style={{ textAlign: 'right' }}>Credit (Rs)</th>
                 <th style={{ textAlign: 'right' }}>Debit (Rs)</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -219,11 +221,26 @@ export default function LedgerView() {
                   <td style={{ textAlign: 'right', fontWeight: '700', color: '#dc2626' }}>
                     {row.type === 'Debit' ? `- Rs ${row.amount.toLocaleString()}` : '-'}
                   </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      className="table-action-icon-btn btn-delete"
+                      title="Delete Ledger Voucher"
+                      onClick={() => setVoucherToDelete(row)}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filteredLedger.length === 0 && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                     No ledger records match the selected criteria.
                   </td>
                 </tr>
@@ -232,6 +249,44 @@ export default function LedgerView() {
           </table>
         </div>
       </div>
+
+      {/* Delete Voucher In-App Confirmation Modal */}
+      {voucherToDelete && (
+        <div className="modal-overlay" onClick={() => setVoucherToDelete(null)}>
+          <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ background: '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
+              <h3 className="modal-title" style={{ color: '#991b1b' }}>Delete Ledger Voucher</h3>
+              <button className="modal-close-btn" onClick={() => setVoucherToDelete(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p style={{ fontSize: '0.92rem', color: '#1e293b', marginBottom: '10px' }}>
+                Are you sure you want to delete this ledger transaction?
+              </p>
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.84rem' }}>
+                <div style={{ marginBottom: '4px' }}><strong>Description:</strong> {voucherToDelete.description}</div>
+                <div style={{ marginBottom: '4px' }}><strong>Date:</strong> {voucherToDelete.date}</div>
+                <div><strong>Amount:</strong> Rs {voucherToDelete.amount?.toLocaleString()} ({voucherToDelete.type})</div>
+              </div>
+              <p style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '8px' }}>
+                * This will remove the voucher from financial statements and balances.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="action-btn-secondary" onClick={() => setVoucherToDelete(null)}>Cancel</button>
+              <button 
+                className="action-btn-primary" 
+                style={{ background: '#dc2626', borderColor: '#dc2626' }}
+                onClick={() => {
+                  deleteLedgerEntry(voucherToDelete.id);
+                  setVoucherToDelete(null);
+                }}
+              >
+                Confirm Delete Voucher
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Post Transaction Modal */}
       {isOpenAddModal && (

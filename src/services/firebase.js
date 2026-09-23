@@ -55,11 +55,30 @@ let app = null;
 let db = null;
 let auth = null;
 
+export function getFirestoreDb() {
+  if (!db) {
+    const res = initFirebase();
+    if (res.isConnected) return res.db;
+  }
+  return db;
+}
+
 export function initFirebase(customConfig = null) {
-  const config = customConfig || getSavedFirebaseConfig();
+  let config = customConfig || getSavedFirebaseConfig();
   
+  if (!config && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIREBASE_PROJECT_ID) {
+    config = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID
+    };
+  }
+
   if (!config || !config.apiKey || !config.projectId) {
-    return { isConnected: false, error: "No Firebase configuration provided. Running in high-performance local demo mode." };
+    return { isConnected: false, error: "No Firebase configuration provided. Running in standalone local mode." };
   }
 
   try {
@@ -81,4 +100,16 @@ export function initFirebase(customConfig = null) {
 // Check initial connection
 export const firebaseStatus = initFirebase();
 
-export { db, auth };
+export { 
+  db, 
+  auth, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  deleteDoc, 
+  updateDoc, 
+  addDoc, 
+  query, 
+  where 
+};

@@ -16,7 +16,7 @@
   <body>
     <div id="root"></div>
     <script>
-      // Register Service Worker for PC Desktop Installation
+      // Register Service Worker for offline performance and cloud update caching
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch((err) => {

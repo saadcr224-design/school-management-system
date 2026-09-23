@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function StaffSalaryView() {
-  const { staff, campuses, paySalary, addStaff, updateStaff } = useApp();
+  const { staff, campuses, paySalary, addStaff, updateStaff, deleteStaff } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCampusFilter, setSelectedCampusFilter] = useState('ALL');
+  const [staffToDelete, setStaffToDelete] = useState(null);
   
   // Pay Salary Modal State
   const [payingStaff, setPayingStaff] = useState(null);
@@ -12,6 +13,9 @@ export default function StaffSalaryView() {
   const [paymentMode, setPaymentMode] = useState('Direct Bank Transfer');
   const [deductions, setDeductions] = useState(0);
   const [bonus, setBonus] = useState(0);
+
+  // Edit Staff Modal State
+  const [editingStaff, setEditingStaff] = useState(null);
 
   // Add Staff Modal State
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -40,10 +44,19 @@ export default function StaffSalaryView() {
     if (!payingStaff) return;
     const finalAmount = Number(payingStaff.salary) + Number(bonus) - Number(deductions);
     paySalary(payingStaff, salaryMonth, finalAmount, paymentMode);
-    alert(`Salary of Rs. ${finalAmount.toLocaleString()} successfully paid to ${payingStaff.name} for ${salaryMonth}! Ledger has been updated.`);
     setPayingStaff(null);
     setDeductions(0);
     setBonus(0);
+  };
+
+  const handleEditStaffSubmit = (e) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    updateStaff(editingStaff.id, {
+      ...editingStaff,
+      salary: Number(editingStaff.salary) || 0
+    });
+    setEditingStaff(null);
   };
 
   const handleAddStaffSubmit = (e) => {
@@ -63,7 +76,6 @@ export default function StaffSalaryView() {
       email: '',
       joinDate: '2026-01-01'
     });
-    alert('Staff member registered successfully!');
   };
 
   return (
@@ -71,7 +83,7 @@ export default function StaffSalaryView() {
       <div className="page-title-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title">Staff & Payroll Management</h1>
-          <p className="page-subtitle">Faculty profiles, designations, monthly salary disbursals, and bank vouchers</p>
+          <p className="page-subtitle">Faculty profiles, designations, monthly salary disbursals, and staff editing</p>
         </div>
         <button 
           className="action-btn-primary"
@@ -213,13 +225,49 @@ export default function StaffSalaryView() {
                   <td style={{ fontWeight: '700', color: '#0f1d38' }}>Rs {st.salary?.toLocaleString()}</td>
                   <td><span className="status-badge badge-paid">{st.status}</span></td>
                   <td style={{ textAlign: 'right' }}>
-                    <button 
-                      className="action-btn-primary"
-                      style={{ padding: '5px 12px', fontSize: '0.8rem', background: '#7f1d1d', borderColor: '#7f1d1d' }}
-                      onClick={() => setPayingStaff(st)}
-                    >
-                      Disburse Salary
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {/* Disburse Salary Icon Button */}
+                      <button 
+                        type="button"
+                        className="table-action-icon-btn btn-disburse"
+                        title="Disburse Monthly Salary"
+                        onClick={() => setPayingStaff(st)}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect width="20" height="12" x="2" y="6" rx="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <path d="M6 12h.01M18 12h.01" />
+                        </svg>
+                      </button>
+
+                      {/* Edit Staff Icon Button */}
+                      <button 
+                        type="button"
+                        className="table-action-icon-btn btn-edit"
+                        title="Edit Staff Member"
+                        onClick={() => setEditingStaff({ ...st })}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                          <path d="m15 5 4 4"/>
+                        </svg>
+                      </button>
+
+                      {/* Delete Staff Icon Button */}
+                      <button 
+                        type="button"
+                        className="table-action-icon-btn btn-delete"
+                        title="Delete Staff Member"
+                        onClick={() => setStaffToDelete(st)}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          <line x1="10" y1="11" x2="10" y2="17"></line>
+                          <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -227,6 +275,133 @@ export default function StaffSalaryView() {
           </table>
         </div>
       </div>
+
+      {/* Edit Staff Modal */}
+      {editingStaff && (
+        <div className="modal-overlay" onClick={() => setEditingStaff(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Edit Staff Profile</h3>
+              <button className="modal-close-btn" onClick={() => setEditingStaff(null)}>✕</button>
+            </div>
+            <form onSubmit={handleEditStaffSubmit}>
+              <div className="modal-body">
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Full Name</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      value={editingStaff.name}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Designation / Role</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      value={editingStaff.designation}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, designation: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Campus Branch</label>
+                    <select 
+                      className="form-select"
+                      value={editingStaff.campus}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, campus: e.target.value })}
+                    >
+                      {campuses.map(c => (
+                        <option key={c.id || c.code} value={c.code}>{c.name} ({c.code})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Monthly Salary (Rs)</label>
+                    <input 
+                      type="number"
+                      className="form-input"
+                      value={editingStaff.salary}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, salary: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      value={editingStaff.phone}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Email Address</label>
+                    <input 
+                      type="email"
+                      className="form-input"
+                      value={editingStaff.email}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Employment Status</label>
+                    <select 
+                      className="form-select"
+                      value={editingStaff.status || 'Active'}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="On Leave">On Leave</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="action-btn-secondary" onClick={() => setEditingStaff(null)}>Cancel</button>
+                <button type="submit" className="action-btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Delete In-App Confirmation Modal */}
+      {staffToDelete && (
+        <div className="modal-overlay" onClick={() => setStaffToDelete(null)}>
+          <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ background: '#fef2f2', borderBottom: '1px solid #fee2e2' }}>
+              <h3 className="modal-title" style={{ color: '#991b1b' }}>Delete Staff Member</h3>
+              <button className="modal-close-btn" onClick={() => setStaffToDelete(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p style={{ fontSize: '0.92rem', color: '#1e293b', marginBottom: '8px' }}>
+                Are you sure you want to permanently remove <strong>{staffToDelete.name}</strong> ({staffToDelete.designation} - <code>{staffToDelete.empCode}</code>)?
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                * This will remove their record from faculty, attendance, and payroll records.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="action-btn-secondary" onClick={() => setStaffToDelete(null)}>Cancel</button>
+              <button 
+                className="action-btn-primary" 
+                style={{ background: '#dc2626', borderColor: '#dc2626' }}
+                onClick={() => {
+                  deleteStaff(staffToDelete.id);
+                  setStaffToDelete(null);
+                }}
+              >
+                Confirm Delete Staff
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Disburse Salary Modal */}
       {payingStaff && (

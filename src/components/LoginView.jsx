@@ -1,44 +1,43 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import SchoolLogo from './SchoolLogo';
 
 export default function LoginView() {
-  const { login, installApp } = useApp();
+  const { login, checkForSoftwareUpdates, softwareVersion } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = login(email, password);
+    try {
+      const res = await login(email, password);
       setIsLoading(false);
       if (!res.success) {
         setError(res.error || 'Invalid credentials');
       }
-    }, 400);
-  };
-
-  const handleQuickFill = () => {
-    setEmail('admin');
-    setPassword('admin123');
-    setError('');
+    } catch (err) {
+      setIsLoading(false);
+      setError(err?.message || 'Login failed');
+    }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      width: '100vw',
+      width: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       background: 'radial-gradient(circle at 50% 20%, #1e3a8a 0%, #0f1d38 60%, #080f1d 100%)',
       padding: '20px',
       position: 'relative',
+      overflow: 'hidden',
       fontFamily: "'Inter', sans-serif"
     }}>
       {/* Background Decorative Rings */}
@@ -73,34 +72,26 @@ export default function LoginView() {
         {/* Card Header with School Crest */}
         <div style={{
           background: 'linear-gradient(135deg, #122241 0%, #091326 100%)',
-          padding: '36px 28px 28px 28px',
+          padding: '36px 28px 26px 28px',
           textAlign: 'center',
           position: 'relative'
         }}>
           <div style={{
-            width: '64px',
-            height: '64px',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            borderRadius: '16px',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 8px 20px rgba(245, 158, 11, 0.4)',
-            marginBottom: '16px'
+            marginBottom: '14px',
+            filter: 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4))'
           }}>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.42 10.922a1 1 0 0 0-.019-.838L12.83 2.18a2 2 0 0 0-1.66 0L2.6 10.08a1 1 0 0 0 0 1.832l8.57 7.908a2 2 0 0 0 1.66 0l8.57-7.908a1 1 0 0 0 .02-.99Z" />
-              <path d="M22 10v6" />
-              <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
-            </svg>
+            <SchoolLogo size={68} />
           </div>
 
           <h1 style={{
             fontFamily: "'Outfit', sans-serif",
-            fontSize: '1.45rem',
+            fontSize: '1.4rem',
             fontWeight: '800',
             color: '#ffffff',
-            letterSpacing: '0.02em',
+            letterSpacing: '0.03em',
             marginBottom: '4px'
           }}>
             SHEZAD CHILDREN ACADEMY
@@ -108,7 +99,9 @@ export default function LoginView() {
           <p style={{
             fontSize: '0.82rem',
             color: '#94a3b8',
-            fontWeight: '500'
+            fontWeight: '600',
+            letterSpacing: '0.02em',
+            textTransform: 'uppercase'
           }}>
             School & College Management Portal
           </p>
@@ -158,10 +151,11 @@ export default function LoginView() {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Enter email or username (e.g. admin)"
+                  placeholder="Enter email or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="username"
                   style={{
                     paddingLeft: '38px',
                     height: '44px',
@@ -208,10 +202,11 @@ export default function LoginView() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="form-input"
-                  placeholder="Enter password (e.g. admin123)"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                   style={{
                     paddingLeft: '38px',
                     height: '44px',
@@ -255,89 +250,31 @@ export default function LoginView() {
                 gap: '8px'
               }}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? 'Signing In...' : 'Sign In to Portal →'}
             </button>
-
-            {/* Quick Fill Helpers for Admin and Super Admin */}
-            <div style={{
-              marginTop: '10px',
-              padding: '12px 14px',
-              background: '#f8fafc',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '600' }}>
-                Quick Access Selectors (Password: <strong>admin123</strong>):
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('admin');
-                    setPassword('admin123');
-                    setError('');
-                  }}
-                  style={{
-                    flex: 1,
-                    background: '#eab308',
-                    color: '#0f1d38',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.74rem',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Admin (Working Access)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('superadmin');
-                    setPassword('admin123');
-                    setError('');
-                  }}
-                  style={{
-                    flex: 1,
-                    background: '#1e293b',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.74rem',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Super Admin
-                </button>
-              </div>
-            </div>
           </form>
 
-          {/* PC Install Button */}
+          {/* Software Update Button */}
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
             <button
               type="button"
-              onClick={installApp}
+              onClick={checkForSoftwareUpdates}
               style={{
                 background: 'none',
                 border: '1px solid #cbd5e1',
                 padding: '6px 14px',
                 borderRadius: '8px',
                 fontSize: '0.78rem',
-                color: '#475569',
+                color: '#0284c7',
+                fontWeight: '600',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px'
               }}
+              title="Check for software updates"
             >
-              <span>💻 Install App on PC</span>
+              <span>🔄 Check for Updates ({softwareVersion})</span>
             </button>
           </div>
         </div>

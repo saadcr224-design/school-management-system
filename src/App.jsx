@@ -13,15 +13,11 @@ import SettingsView from './components/SettingsView';
 import NewAdmissionModal from './components/NewAdmissionModal';
 import GenerateFeeModal from './components/GenerateFeeModal';
 import CollectPaymentModal from './components/CollectPaymentModal';
+import SoftwareUpdateModal from './components/SoftwareUpdateModal';
 import LoginView from './components/LoginView';
 
 function MainApp() {
-  const { activeTab, isAuthenticated } = useApp();
-
-  // If not signed in, show the Sign In screen as first page
-  if (!isAuthenticated) {
-    return <LoginView />;
-  }
+  const { activeTab, isAuthenticated, toast } = useApp();
 
   // Modal states
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -33,75 +29,97 @@ function MainApp() {
   };
 
   return (
-    <div className="app-container">
-      {/* Sidebar matching screenshot */}
-      <Sidebar />
+    <>
+      {/* If not signed in, show the Sign In screen as first page */}
+      {!isAuthenticated ? (
+        <LoginView />
+      ) : (
+        <div className="app-container">
+          {/* Sidebar matching design */}
+          <Sidebar />
 
-      {/* Main Viewport */}
-      <div className="main-viewport">
-        {/* View Routing */}
-        {activeTab === 'dashboard' && (
-          <DashboardView 
-            onOpenAdmissionModal={() => setIsAdmissionModalOpen(true)}
-            onOpenFeeModal={() => setIsFeeModalOpen(true)}
-            onOpenPaymentModal={handleOpenPaymentModal}
+          {/* Main Viewport */}
+          <div className="main-viewport">
+            {/* View Routing */}
+            {activeTab === 'dashboard' && (
+              <DashboardView 
+                onOpenAdmissionModal={() => setIsAdmissionModalOpen(true)}
+                onOpenFeeModal={() => setIsFeeModalOpen(true)}
+                onOpenPaymentModal={handleOpenPaymentModal}
+              />
+            )}
+
+            {activeTab === 'students' && (
+              <StudentsView 
+                onOpenAdmissionModal={() => setIsAdmissionModalOpen(true)}
+                onOpenFeeModal={() => setIsFeeModalOpen(true)}
+                onOpenPaymentModal={handleOpenPaymentModal}
+              />
+            )}
+
+            {activeTab === 'feeslips' && (
+              <FeeSlipsView 
+                onOpenFeeModal={() => setIsFeeModalOpen(true)}
+                onOpenPaymentModal={handleOpenPaymentModal}
+              />
+            )}
+
+            {activeTab === 'staff' && (
+              <StaffSalaryView />
+            )}
+
+            {activeTab === 'attendance' && (
+              <AttendanceView />
+            )}
+
+            {activeTab === 'ledger' && (
+              <LedgerView />
+            )}
+
+            {activeTab === 'reports' && (
+              <ReportsView />
+            )}
+
+            {activeTab === 'users' && (
+              <UserManagementView />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsView />
+            )}
+          </div>
+
+          {/* Global Modals */}
+          <NewAdmissionModal 
+            isOpen={isAdmissionModalOpen}
+            onClose={() => setIsAdmissionModalOpen(false)}
           />
-        )}
 
-        {activeTab === 'students' && (
-          <StudentsView 
-            onOpenAdmissionModal={() => setIsAdmissionModalOpen(true)}
+          <GenerateFeeModal 
+            isOpen={isFeeModalOpen}
+            onClose={() => setIsFeeModalOpen(false)}
           />
-        )}
 
-        {activeTab === 'feeslips' && (
-          <FeeSlipsView 
-            onOpenFeeModal={() => setIsFeeModalOpen(true)}
-            onOpenPaymentModal={handleOpenPaymentModal}
+          <CollectPaymentModal 
+            slip={paymentSlipToCollect}
+            onClose={() => setPaymentSlipToCollect(null)}
           />
-        )}
+        </div>
+      )}
 
-        {activeTab === 'staff' && (
-          <StaffSalaryView />
-        )}
+      {/* Global Software Update Modal */}
+      <SoftwareUpdateModal />
 
-        {activeTab === 'attendance' && (
-          <AttendanceView />
-        )}
-
-        {activeTab === 'ledger' && (
-          <LedgerView />
-        )}
-
-        {activeTab === 'reports' && (
-          <ReportsView />
-        )}
-
-        {activeTab === 'users' && (
-          <UserManagementView />
-        )}
-
-        {activeTab === 'settings' && (
-          <SettingsView />
-        )}
-      </div>
-
-      {/* Global Modals */}
-      <NewAdmissionModal 
-        isOpen={isAdmissionModalOpen}
-        onClose={() => setIsAdmissionModalOpen(false)}
-      />
-
-      <GenerateFeeModal 
-        isOpen={isFeeModalOpen}
-        onClose={() => setIsFeeModalOpen(false)}
-      />
-
-      <CollectPaymentModal 
-        slip={paymentSlipToCollect}
-        onClose={() => setPaymentSlipToCollect(null)}
-      />
-    </div>
+      {/* Global Fast Non-blocking Toast Notification */}
+      {toast && (
+        <div className={`app-toast toast-${toast.type || 'success'}`}>
+          <div className="toast-icon">
+            {toast.type === 'danger' ? '🗑️' : toast.type === 'info' ? 'ℹ️' : '✓'}
+          </div>
+          <div className="toast-message">{toast.message}</div>
+        </div>
+      )}
+    </>
   );
 }
 

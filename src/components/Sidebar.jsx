@@ -1,8 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import SchoolLogo from './SchoolLogo';
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, currentUser, logout, installApp, hasPermission } = useApp();
+  const { activeTab, setActiveTab, currentUser, logout, checkForSoftwareUpdates, softwareVersion, hasPermission } = useApp();
 
   const navItems = [
     {
@@ -89,7 +90,7 @@ export default function Sidebar() {
     },
     {
       id: 'users',
-      label: 'User Management',
+      label: 'Admin Access Control',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
@@ -111,14 +112,8 @@ export default function Sidebar() {
 
   return (
     <aside className="app-sidebar no-print">
-      <div className="sidebar-header">
-        <div className="brand-icon-box">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.42 10.922a1 1 0 0 0-.019-.838L12.83 2.18a2 2 0 0 0-1.66 0L2.6 10.08a1 1 0 0 0 0 1.832l8.57 7.908a2 2 0 0 0 1.66 0l8.57-7.908a1 1 0 0 0 .02-.99Z" />
-            <path d="M22 10v6" />
-            <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
-          </svg>
-        </div>
+      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px' }}>
+        <SchoolLogo size={38} />
         <div className="brand-text">
           <span className="brand-title">SHEZAD CHILDREN ACADEMY</span>
           <span className="brand-subtitle">Schools & Colleges</span>
@@ -145,17 +140,18 @@ export default function Sidebar() {
 
       <div className="sidebar-footer">
         <div className="user-profile-card">
+          {/* Software Update Button */}
           <button
             type="button"
-            onClick={installApp}
+            onClick={checkForSoftwareUpdates}
             style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(5, 150, 105, 0.25))',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
               color: '#f8fafc',
-              padding: '6px 10px',
+              padding: '7px 10px',
               borderRadius: '8px',
               fontSize: '0.78rem',
-              fontWeight: '600',
+              fontWeight: '700',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -163,24 +159,22 @@ export default function Sidebar() {
               gap: '6px',
               marginBottom: '10px',
               width: '100%',
-              transition: 'background 0.2s'
+              transition: 'all 0.2s'
             }}
-            title="Install Shezad Children Academy as a standalone application on your PC"
+            title="Check for software updates and sync all modules"
           >
-            <span>💻 Install App on PC</span>
+            <span>🔄 Software Update ({softwareVersion})</span>
           </button>
 
           <div className="user-profile-info">
             <span className="user-name">{currentUser.name}</span>
-            <span className="user-role">{currentUser.role}</span>
+            <span className="user-role" style={{ color: currentUser.role === 'Super Admin' ? '#f59e0b' : '#38bdf8', fontWeight: '700' }}>
+              {currentUser.role === 'Super Admin' ? 'Super Admin' : 'Admin (Working Access)'}
+            </span>
           </div>
           <button 
             className="signout-btn"
-            onClick={() => {
-              if (window.confirm("Are you sure you want to sign out?")) {
-                logout();
-              }
-            }}
+            onClick={logout}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

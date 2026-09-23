@@ -68,8 +68,10 @@ h1, h2, h3, h4, h5, h6 {
 .app-container {
   display: flex;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
+  max-width: 100%;
   background-color: var(--bg-main);
+  overflow-x: hidden;
 }
 
 /* Sidebar Styling */
@@ -842,7 +844,7 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 3px rgba(15, 29, 56, 0.1);
 }
 
-/* Printable Fee Challan (3-Copy Format) */
+/* Printable Fee Challan (2-Copy Format: School Copy & Student Copy) */
 .challan-container {
   background: #ffffff;
   padding: 16px;
@@ -850,10 +852,16 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', sans-serif;
 }
 
+.challan-two-parts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
 .challan-three-parts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
 }
 
 .challan-copy {
@@ -942,34 +950,374 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 1px solid #e2e8f0;
 }
 
-/* Print Specific Rules */
+/* Table Action Icon Buttons */
+.table-action-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.table-action-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table-action-icon-btn.btn-slip {
+  color: #0284c7;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+.table-action-icon-btn.btn-slip:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.table-action-icon-btn.btn-idcard {
+  color: #4f46e5;
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+.table-action-icon-btn.btn-idcard:hover {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+.table-action-icon-btn.btn-edit {
+  color: #0284c7;
+  border-color: #e0f2fe;
+  background: #f0f9ff;
+}
+.table-action-icon-btn.btn-edit:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.table-action-icon-btn.btn-delete {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.table-action-icon-btn.btn-delete:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.table-action-icon-btn.btn-print {
+  color: #0f1d38;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.table-action-icon-btn.btn-print:hover {
+  background: #0f1d38;
+  color: #ffffff;
+  border-color: #0f1d38;
+}
+
+.table-action-icon-btn.btn-collect {
+  color: #059669;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+.table-action-icon-btn.btn-collect:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.table-action-icon-btn.btn-permissions {
+  color: #d97706;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.table-action-icon-btn.btn-permissions:hover {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
+.table-action-icon-btn.btn-disburse {
+  color: #7f1d1d;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.table-action-icon-btn.btn-disburse:hover {
+  background: #7f1d1d;
+  color: #ffffff;
+  border-color: #7f1d1d;
+}
+
+/* Print Specific Rules for Physical Hard-Copy Printers */
+@page {
+  size: A4 landscape;
+  margin: 6mm 8mm;
+}
+
 @media print {
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
-  .app-sidebar, .top-navbar, .no-print, .modal-footer, .modal-header {
+
+  html, body {
+    background: #ffffff !important;
+    color: #0f1d38 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .app-sidebar, 
+  .top-navbar, 
+  .no-print, 
+  .modal-footer, 
+  .modal-header.no-print,
+  .app-toast,
+  button,
+  .action-btn-primary,
+  .action-btn-secondary {
     display: none !important;
   }
-  .main-viewport {
+
+  .official-print-report-header {
+    display: block !important;
+  }
+
+  .main-viewport, .main-layout {
+    display: block !important;
     height: auto !important;
     overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
   .modal-overlay {
     position: static !important;
     background: none !important;
     padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
   }
-  .modal-content {
+
+  .modal-content, .modal-content.wide {
     box-shadow: none !important;
     border: none !important;
     max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+    overflow: visible !important;
     max-height: none !important;
   }
+
+  .printable-challan-sheet {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+    min-height: 175mm !important;
+    display: block !important;
+    margin-bottom: 0 !important;
+    padding: 2mm 0 !important;
+  }
+
+  .printable-challan-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .challan-two-parts,
   .challan-three-parts {
-    gap: 8px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8mm !important;
+    width: 100% !important;
   }
+
   .challan-copy {
-    border: 1px dashed #000000 !important;
+    border: 1.5px solid #0369a1 !important;
+    padding: 4mm !important;
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-height: 165mm !important;
+    font-size: 8.5pt !important;
+    box-sizing: border-box !important;
+    position: relative !important;
   }
+
+  .challan-school-header {
+    border-bottom: 2px solid #0f1d38 !important;
+    padding-bottom: 2mm !important;
+    margin-bottom: 2mm !important;
+  }
+
+  .challan-school-name {
+    font-size: 10pt !important;
+    font-weight: 900 !important;
+    color: #0f1d38 !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  .challan-copy-type {
+    background: linear-gradient(135deg, #0f1d38 0%, #1e3a8a 100%) !important;
+    color: #ffffff !important;
+    padding: 1mm 3mm !important;
+    font-size: 7.5pt !important;
+    font-weight: 800 !important;
+    border-radius: 4px !important;
+    display: inline-block !important;
+    margin-top: 1.5mm !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .challan-meta-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 8pt !important;
+    margin-bottom: 1mm !important;
+    color: #1e293b !important;
+  }
+
+  .challan-meta-label {
+    font-weight: 600 !important;
+    color: #475569 !important;
+  }
+
+  .challan-meta-value {
+    font-weight: 800 !important;
+    color: #0f1d38 !important;
+  }
+
+  .challan-fee-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 2mm !important;
+  }
+
+  .challan-fee-table th,
+  .challan-fee-table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 1.5mm 2mm !important;
+    font-size: 8pt !important;
+    color: #0f1d38 !important;
+  }
+
+  .challan-fee-table th {
+    background: #f1f5f9 !important;
+    font-weight: 800 !important;
+    color: #0f1d38 !important;
+  }
+
+  .challan-total-row td {
+    font-weight: 900 !important;
+    font-size: 9pt !important;
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+    border-top: 2px solid #059669 !important;
+  }
+
+  .challan-stamp-box {
+    margin-top: 4mm !important;
+    padding-top: 5mm !important;
+    border-top: 1px dashed #94a3b8 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 7.5pt !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+  }
+
+  .printable-id-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Fast Non-blocking Toast Notification */
+.app-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  font-size: 0.88rem;
+  font-weight: 600;
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(12px);
+  max-width: 420px;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.toast-success {
+  background: #064e3b;
+  color: #ecfdf5;
+  border: 1px solid #059669;
+}
+
+.toast-danger {
+  background: #7f1d1d;
+  color: #fef2f2;
+  border: 1px solid #dc2626;
+}
+
+.toast-info {
+  background: #1e3a8a;
+  color: #eff6ff;
+  border: 1px solid #3b82f6;
+}
+
+.toast-icon {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-message {
+  line-height: 1.4;
 }
