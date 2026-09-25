@@ -24,3 +24,9 @@ mingit/
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary scripts
+*.bat
+*.ps1
+*.log
+deploy.cjs
