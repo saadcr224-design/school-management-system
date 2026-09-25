@@ -876,17 +876,22 @@ export function AppProvider({ children }) {
   const hasPermission = (moduleKey) => {
     if (!currentUser) return false;
     if (currentUser.role === 'Super Admin') return true;
+    
+    // Strict restriction: User Management & Admin Access Control is ONLY for Super Admin
+    if (moduleKey === 'users') {
+      return false;
+    }
+    
     if (currentUser.role === 'Admin') {
-      // Admins have access to operational modules by default including users delegation
       if (currentUser.permissions && currentUser.permissions[moduleKey] !== undefined) {
-        return currentUser.permissions[moduleKey] !== false;
+        return currentUser.permissions[moduleKey] === true;
       }
-      return true;
+      return false;
     }
     if (currentUser.permissions) {
-      return currentUser.permissions[moduleKey] !== false;
+      return currentUser.permissions[moduleKey] === true;
     }
-    return true;
+    return false;
   };
 
   // --- TWO-SYSTEM SYNCHRONIZATION & SOFTWARE UPDATE ENGINE ---
@@ -1291,6 +1296,10 @@ export function AppProvider({ children }) {
   };
 
   const deleteStudent = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete student records.', 'danger');
+      return false;
+    }
     const target = students.find(s => s.id === id);
     setStudents(prev => prev.filter(s => s.id !== id));
     removeDocFromFirestore('students', id);
@@ -1303,6 +1312,7 @@ export function AppProvider({ children }) {
     }
 
     showToast(`✓ Student ${target ? target.name : ''} deleted permanently`, 'danger');
+    return true;
   };
 
   // --- Fee Slip Actions ---
@@ -1559,6 +1569,10 @@ export function AppProvider({ children }) {
   };
 
   const deleteFeeSlip = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete fee challans.', 'danger');
+      return false;
+    }
     const target = feeSlips.find(s => s.id === id);
     const updatedFeeSlips = feeSlips.filter(s => s.id !== id);
     setFeeSlips(updatedFeeSlips);
@@ -1580,6 +1594,7 @@ export function AppProvider({ children }) {
     }
 
     showToast(`✓ Fee Challan ${target ? target.challanNo : ''} deleted and student balance recalculated`, 'danger');
+    return true;
   };
 
   // --- Staff & Salary Actions ---
@@ -1608,10 +1623,15 @@ export function AppProvider({ children }) {
   };
 
   const deleteStaff = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete staff records.', 'danger');
+      return false;
+    }
     const target = staff.find(s => s.id === id);
     setStaff(prev => prev.filter(s => s.id !== id));
     removeDocFromFirestore('staff', id);
     showToast(`✓ Staff member ${target ? target.name : ''} deleted`, 'danger');
+    return true;
   };
 
   const paySalary = (staffMember, month, amount, paymentMethod = 'Bank Transfer') => {
@@ -1641,14 +1661,23 @@ export function AppProvider({ children }) {
   };
 
   const deleteLedgerEntry = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete financial ledger entries.', 'danger');
+      return false;
+    }
     const target = ledger.find(e => e.id === id);
     setLedger(prev => prev.filter(e => e.id !== id));
     removeDocFromFirestore('ledger', id);
     showToast(`✓ Ledger transaction voucher deleted`, 'danger');
+    return true;
   };
 
   // --- User / Admin Actions ---
   const addUser = (userData) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to create new admin users.', 'danger');
+      return null;
+    }
     const id = 'usr-' + Date.now();
     const newUser = {
       id,
@@ -1669,11 +1698,15 @@ export function AppProvider({ children }) {
     };
     setUsers(prev => [...prev, newUser]);
     syncDocToFirestore('users', id, newUser);
-    showToast(`✓ Admin user ${newUser.name} created!`, 'success');
+    showToast(`✓ Admin user ${newUser.name} created with assigned permissions!`, 'success');
     return newUser;
   };
 
   const deleteUser = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete admin accounts.', 'danger');
+      return false;
+    }
     const target = users.find(u => u.id === id);
     if (target?.role === 'Super Admin') {
       showToast('Cannot delete the primary Super Admin account.', 'danger');
@@ -1721,6 +1754,10 @@ export function AppProvider({ children }) {
   };
 
   const deleteCampus = (id) => {
+    if (currentUser?.role !== 'Super Admin') {
+      showToast('⚠️ Access Denied: Only Super Admin is authorized to delete campus branches.', 'danger');
+      return false;
+    }
     const target = campuses.find(c => c.id === id || c.code === id);
     if (!target) return false;
     const studentCount = students.filter(s => s.campus === target.code).length;

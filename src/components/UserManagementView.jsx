@@ -165,6 +165,45 @@ export default function UserManagementView() {
   const adminUsers = users.filter(u => u.role === 'Admin');
   const otherUsers = users.filter(u => u.role !== 'Admin' && u.role !== 'Super Admin');
 
+  if (!isSuperAdmin) {
+    return (
+      <div className="content-body">
+        <div style={{
+          maxWidth: '620px',
+          margin: '60px auto',
+          background: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '40px 32px',
+          textAlign: 'center',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🔒</div>
+          <h2 style={{ color: '#0f1d38', fontSize: '1.35rem', fontWeight: '800', marginBottom: '8px' }}>
+            Access Restricted: Super Admin Only
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: '20px' }}>
+            Only the primary <strong>Super Admin</strong> is authorized to create new Admin working accounts, assign module permissions, or delete accounts.
+          </p>
+          <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'inline-block', textAlign: 'left', fontSize: '0.84rem', color: '#334155' }}>
+            <div>Current Account: <strong>{currentUser?.name || 'Administrator'}</strong></div>
+            <div>Role: <span className="status-badge badge-active">{currentUser?.role || 'Admin'}</span></div>
+          </div>
+          <div style={{ marginTop: '24px' }}>
+            <button 
+              type="button" 
+              className="action-btn-primary" 
+              onClick={() => setActiveTab('dashboard')}
+              style={{ padding: '10px 24px' }}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="content-body">
       {/* Control Center Banner */}
