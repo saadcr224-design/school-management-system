@@ -29,4 +29,6 @@ mingit/
 *.bat
 *.ps1
 *.log
-deploy.cjs
+*.cjs
+test_build.js
+

@@ -598,7 +598,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
                           <SchoolLogo size={36} />
                           <div>
                             <h3 className="challan-school-name">SHEZAD CHILDREN ACADEMY</h3>
-                            <p className="challan-school-sub">Affiliated with Secondary Education Board · System Generated</p>
+                            <p className="challan-school-sub">Affiliated with Secondary Education Board · Helpline: <strong>0313 9413450</strong></p>
                           </div>
                           <span className="challan-copy-tag">{copyName}</span>
                         </div>
@@ -616,7 +616,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
                           <div>Roll Number: <strong>{slip.rollNo}</strong></div>
                           <div>Class & Section: <strong>{slip.classGrade} ({slip.section || 'A'})</strong></div>
                           <div>Campus: <strong>{slip.campus}</strong></div>
-                          <div>Contact Phone: <strong>{slip.phone || '—'}</strong></div>
+                          <div>Accounts Helpline: <strong style={{ color: '#0369a1' }}>0313 9413450</strong></div>
                         </div>
 
                         <table className="challan-items-table">
@@ -687,6 +687,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
                         </table>
 
                         <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '6px', lineHeight: 1.4 }}>
+                          <p style={{ margin: 0 }}>* Official Accounts Helpline / WhatsApp: <strong>0313 9413450</strong></p>
                           <p style={{ margin: 0 }}>* Payable at School Accounts Office / Authorized Bank Counter.</p>
                           <p style={{ margin: 0 }}>* Late fee fine of Rs. 200 applicable after due date.</p>
                         </div>

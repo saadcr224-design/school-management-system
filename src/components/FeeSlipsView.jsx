@@ -949,7 +949,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                   SHEZAD CHILDREN ACADEMY
                 </h2>
                 <div style={{ fontSize: '0.78rem', color: '#0369a1', fontWeight: '700' }}>
-                  Accounts & Finance Department — {reminderNoticeToPrint.campus} Campus
+                  Accounts & Finance Department — {reminderNoticeToPrint.campus} Campus · Helpline: 0313 9413450
                 </div>
               </div>
 
@@ -1053,7 +1053,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                               <div>
                                 <div className="challan-school-name">SHEZAD CHILDREN ACADEMY</div>
                                 <div style={{ fontSize: '0.7rem', color: '#0369a1', fontWeight: '700' }}>
-                                  Schools & Colleges ({slip.campus} Campus)
+                                  Schools & Colleges ({slip.campus} Campus) · Contact: <strong>0313 9413450</strong>
                                 </div>
                               </div>
                             </div>
@@ -1069,9 +1069,9 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                             <div><strong>Father Name:</strong> {fatherName}</div>
                             <div><strong>Roll No:</strong> {slip.rollNo}</div>
                             <div><strong>Class & Sec:</strong> {slip.classGrade} ({slip.section || 'A'})</div>
-                            <div><strong>Contact #:</strong> {contactNumber}</div>
+                            <div><strong>Helpline #:</strong> <strong style={{ color: '#0369a1' }}>0313 9413450</strong></div>
                             <div style={{ gridColumn: 'span 2', color: '#0369a1', fontWeight: '700' }}>
-                              Billing Month: {slip.month}
+                              Billing Month: {slip.month} · Student Cell: {contactNumber}
                             </div>
                           </div>
 
@@ -1142,6 +1142,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                           </table>
 
                           <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '6px', lineHeight: 1.4 }}>
+                            <p style={{ margin: 0 }}>* Official Accounts Helpline / WhatsApp: <strong>0313 9413450</strong></p>
                             <p style={{ margin: 0 }}>* Payable at School Accounts Office / Authorized Bank Counter.</p>
                             <p style={{ margin: 0 }}>* Late fee fine of Rs. 200 applicable after due date.</p>
                           </div>
