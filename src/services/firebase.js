@@ -11,6 +11,7 @@ import {
   deleteDoc, 
   query, 
   where,
+  onSnapshot,
   enableIndexedDbPersistence 
 } from 'firebase/firestore';
 import { 
@@ -111,5 +112,6 @@ export {
   updateDoc, 
   addDoc, 
   query, 
-  where 
+  where,
+  onSnapshot
 };

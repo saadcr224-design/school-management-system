@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
 
 export default function LoginView() {
-  const { login, checkForSoftwareUpdates, softwareVersion } = useApp();
+  const { login, checkForSoftwareUpdates, softwareVersion, schoolProfile } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -94,7 +94,7 @@ export default function LoginView() {
             letterSpacing: '0.03em',
             marginBottom: '4px'
           }}>
-            SHEZAD CHILDREN ACADEMY
+            {schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY'}
           </h1>
           <p style={{
             fontSize: '0.82rem',
@@ -103,7 +103,7 @@ export default function LoginView() {
             letterSpacing: '0.02em',
             textTransform: 'uppercase'
           }}>
-            School & College Management Portal
+            {schoolProfile?.tagline || 'Schools & Colleges'} · Central Portal
           </p>
         </div>
 

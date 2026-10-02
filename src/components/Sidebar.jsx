@@ -3,7 +3,16 @@ import { useApp } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, currentUser, logout, checkForSoftwareUpdates, softwareVersion, hasPermission } = useApp();
+  const { 
+    activeTab, 
+    setActiveTab, 
+    currentUser, 
+    logout, 
+    checkForSoftwareUpdates, 
+    softwareVersion, 
+    hasPermission,
+    schoolProfile 
+  } = useApp();
 
   const navItems = [
     {
@@ -27,6 +36,30 @@ export default function Sidebar() {
           <circle cx="9" cy="7" r="4" />
           <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      )
+    },
+    {
+      id: 'siblings',
+      label: 'Sibling Portal',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      )
+    },
+    {
+      id: 'siblingfees',
+      label: 'Sibling Fee Portal',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="20" height="14" x="2" y="5" rx="2" />
+          <line x1="2" x2="22" y1="10" y2="10" />
+          <path d="M7 15h.01" />
+          <path d="M11 15h2" />
         </svg>
       )
     },
@@ -110,13 +143,16 @@ export default function Sidebar() {
     }
   ];
 
+  const schoolName = schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY';
+  const schoolTagline = schoolProfile?.tagline || 'Schools & Colleges';
+
   return (
     <aside className="app-sidebar no-print">
       <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px' }}>
         <SchoolLogo size={38} />
         <div className="brand-text">
-          <span className="brand-title">SHEZAD CHILDREN ACADEMY</span>
-          <span className="brand-subtitle">Schools & Colleges</span>
+          <span className="brand-title" style={{ fontSize: '0.86rem', lineHeight: 1.2 }}>{schoolName}</span>
+          <span className="brand-subtitle">{schoolTagline}</span>
         </div>
       </div>
 

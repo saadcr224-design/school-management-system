@@ -9,7 +9,8 @@ import {
   getDocs, 
   setDoc, 
   doc, 
-  deleteDoc 
+  deleteDoc,
+  onSnapshot
 } from '../services/firebase';
 
 const AppContext = createContext();
@@ -189,6 +190,64 @@ const INITIAL_CAMPUSES = [
   { id: 'RWL', name: 'Rawalpindi Campus', code: 'RWL', city: 'Rawalpindi', address: 'Peshawar Road, Rawalpindi', status: 'Active' },
 ];
 
+export const DEFAULT_SCHOOL_PROFILE = {
+  name: 'SHEZAD CHILDREN ACADEMY',
+  tagline: 'Schools & Colleges',
+  phone: '0992-123456 / 0300-1234567',
+  helpline: '0313-9413450',
+  email: 'info@shezadacademy.edu.pk',
+  website: 'www.shezadacademy.edu.pk',
+  address: 'Main Mansehra Road, Supply & Mandian, Abbottabad, Pakistan',
+  registrationNo: 'REG-BISE-ABB-2026-9988',
+  logoUrl: '', // Base64 or image URL
+  bankName: 'Habib Bank Limited (HBL)',
+  accountTitle: 'Shezad Children Academy Accounts',
+  accountNo: '1234-56789012-03',
+  branchCode: '0452',
+  iban: 'PK36HABB0000123456789012',
+  challanInstructions: '1. Please pay fee on or before 10th of every month.\n2. Surcharge after due date Rs. 200 will be charged.\n3. Fee once paid is non-refundable and non-transferable.',
+  principalSignatureText: 'Principal / Accounts Officer'
+};
+
+export const INITIAL_FAMILIES = [
+  {
+    id: 'FAM-101',
+    familyCode: 'FAM-101',
+    fatherName: 'Tariq Mahmood',
+    fatherCnic: '13101-1234567-1',
+    phone: '0300-1234567',
+    altPhone: '0345-6667778',
+    campus: 'ABB',
+    address: 'Supply Bazar, Mansehra Road, Abbottabad',
+    notes: 'Family with 3 children enrolled across 9th, 2nd Year, and 6th grades',
+    studentIds: ['std-1', 'std-5', 'std-11']
+  },
+  {
+    id: 'FAM-102',
+    familyCode: 'FAM-102',
+    fatherName: 'Farooq Ahmad',
+    fatherCnic: '15602-9876543-3',
+    phone: '0321-4443322',
+    altPhone: '0312-7778899',
+    campus: 'SWT',
+    address: 'Main Bazar, Mingora City, Swat',
+    notes: '2 children enrolled in Swat campus',
+    studentIds: ['std-6', 'std-12']
+  },
+  {
+    id: 'FAM-103',
+    familyCode: 'FAM-103',
+    fatherName: 'Ali Asghar',
+    fatherCnic: '13101-5544332-5',
+    phone: '0312-3456789',
+    altPhone: '0301-4433221',
+    campus: 'ABB',
+    address: 'Kakul Road, Abbottabad',
+    notes: '2 children enrolled',
+    studentIds: ['std-3', 'std-13']
+  }
+];
+
 const INITIAL_STUDENTS = [
   // Abbottabad Students
   { 
@@ -196,6 +255,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'ABB-101', 
     name: 'Muhammad Saad', 
     fatherName: 'Tariq Mahmood', 
+    fatherCnic: '13101-1234567-1',
+    familyId: 'FAM-101',
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'ABB', 
     classGrade: '9th', 
     section: 'A', 
@@ -217,6 +280,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'ABB-102', 
     name: 'Ayesha Khan', 
     fatherName: 'Dr. Imran Khan', 
+    fatherCnic: '13101-7788991-2',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'ABB', 
     classGrade: '10th', 
     section: 'A', 
@@ -238,6 +305,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'ABB-103', 
     name: 'Hamza Ali', 
     fatherName: 'Ali Asghar', 
+    fatherCnic: '13101-5544332-5',
+    familyId: 'FAM-103',
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'ABB', 
     classGrade: '8th', 
     section: 'B', 
@@ -257,6 +328,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'ABB-104', 
     name: 'Fatima Bibi', 
     fatherName: 'Sher Zaman', 
+    fatherCnic: '13101-9988776-4',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'ABB', 
     classGrade: '1st Year', 
     section: 'Pre-Med', 
@@ -275,7 +350,11 @@ const INITIAL_STUDENTS = [
     id: 'std-5', 
     rollNo: 'ABB-105', 
     name: 'Bilal Tariq', 
-    fatherName: 'Tariq Mehmood', 
+    fatherName: 'Tariq Mahmood', 
+    fatherCnic: '13101-1234567-1',
+    familyId: 'FAM-101',
+    siblingRank: 2,
+    siblingDiscountPercent: 25,
     campus: 'ABB', 
     classGrade: '2nd Year', 
     section: 'ICS', 
@@ -290,6 +369,52 @@ const INITIAL_STUDENTS = [
     admissionDate: '2026-02-15',
     feeHistory: []
   },
+  { 
+    id: 'std-11', 
+    rollNo: 'ABB-106', 
+    name: 'Zainab Tariq', 
+    fatherName: 'Tariq Mahmood', 
+    fatherCnic: '13101-1234567-1',
+    familyId: 'FAM-101',
+    siblingRank: 3,
+    siblingDiscountPercent: 50,
+    campus: 'ABB', 
+    classGrade: '6th', 
+    section: 'A', 
+    phone: '0300-1234567', 
+    monthlyFee: 3800, 
+    transportFee: 1500,
+    isTransport: true,
+    transportRoute: 'Route 1 - Supply & Mandian',
+    admissionFee: 4000,
+    balance: 0, 
+    status: 'Active', 
+    admissionDate: '2026-02-20',
+    feeHistory: []
+  },
+  { 
+    id: 'std-13', 
+    rollNo: 'ABB-107', 
+    name: 'Usman Ali', 
+    fatherName: 'Ali Asghar', 
+    fatherCnic: '13101-5544332-5',
+    familyId: 'FAM-103',
+    siblingRank: 2,
+    siblingDiscountPercent: 25,
+    campus: 'ABB', 
+    classGrade: '5th', 
+    section: 'A', 
+    phone: '0312-3456789', 
+    monthlyFee: 3500, 
+    transportFee: 1200,
+    isTransport: true,
+    transportRoute: 'Route 2 - Kakul Road',
+    admissionFee: 3500,
+    balance: 0, 
+    status: 'Active', 
+    admissionDate: '2026-02-22',
+    feeHistory: []
+  },
   
   // Swat Students
   { 
@@ -297,6 +422,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'SWT-201', 
     name: 'Umar Farooq', 
     fatherName: 'Farooq Ahmad', 
+    fatherCnic: '15602-9876543-3',
+    familyId: 'FAM-102',
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'SWT', 
     classGrade: '9th', 
     section: 'A', 
@@ -312,10 +441,37 @@ const INITIAL_STUDENTS = [
     feeHistory: []
   },
   { 
+    id: 'std-12', 
+    rollNo: 'SWT-206', 
+    name: 'Khadija Farooq', 
+    fatherName: 'Farooq Ahmad', 
+    fatherCnic: '15602-9876543-3',
+    familyId: 'FAM-102',
+    siblingRank: 2,
+    siblingDiscountPercent: 25,
+    campus: 'SWT', 
+    classGrade: '7th', 
+    section: 'A', 
+    phone: '0321-4443322', 
+    monthlyFee: 3800, 
+    transportFee: 1500,
+    isTransport: true,
+    transportRoute: 'Route 1 - Mingora City',
+    admissionFee: 4000,
+    balance: 0, 
+    status: 'Active', 
+    admissionDate: '2026-01-12',
+    feeHistory: []
+  },
+  { 
     id: 'std-7', 
     rollNo: 'SWT-202', 
     name: 'Zainab Noor', 
     fatherName: 'Noor Muhammad', 
+    fatherCnic: '15602-5544332-5',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'SWT', 
     classGrade: '10th', 
     section: 'B', 
@@ -335,6 +491,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'SWT-203', 
     name: 'Hassan Raza', 
     fatherName: 'Raza Ullah', 
+    fatherCnic: '15602-1122334-9',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'SWT', 
     classGrade: '7th', 
     section: 'A', 
@@ -354,6 +514,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'SWT-204', 
     name: 'Maryam Gul', 
     fatherName: 'Gulzar Khan', 
+    fatherCnic: '15602-7766554-1',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'SWT', 
     classGrade: '1st Year', 
     section: 'Pre-Eng', 
@@ -373,6 +537,10 @@ const INITIAL_STUDENTS = [
     rollNo: 'SWT-205', 
     name: 'Danial Khan', 
     fatherName: 'Amjad Khan', 
+    fatherCnic: '15602-3344556-7',
+    familyId: null,
+    siblingRank: 1,
+    siblingDiscountPercent: 0,
     campus: 'SWT', 
     classGrade: '2nd Year', 
     section: 'ICS', 
@@ -477,6 +645,8 @@ const INITIAL_USERS = [
     permissions: {
       dashboard: true,
       students: true,
+      siblings: true,
+      siblingfees: true,
       feeslips: true,
       staff: true,
       attendance: true,
@@ -498,6 +668,8 @@ const INITIAL_USERS = [
     permissions: {
       dashboard: true,
       students: true,
+      siblings: true,
+      siblingfees: true,
       feeslips: true,
       staff: true,
       attendance: true,
@@ -517,6 +689,8 @@ const INITIAL_USERS = [
     permissions: {
       dashboard: true,
       students: true,
+      siblings: true,
+      siblingfees: true,
       feeslips: true,
       staff: false,
       attendance: true,
@@ -536,6 +710,8 @@ const INITIAL_USERS = [
     permissions: {
       dashboard: true,
       students: false,
+      siblings: true,
+      siblingfees: true,
       feeslips: true,
       staff: false,
       attendance: false,
@@ -564,6 +740,9 @@ export function AppProvider({ children }) {
       const parsed = JSON.parse(local);
       return parsed.map(s => ({
         ...s,
+        familyId: s.familyId || null,
+        siblingRank: s.siblingRank !== undefined ? Number(s.siblingRank) : (s.siblingOrder !== undefined ? Number(s.siblingOrder) : 1),
+        siblingDiscountPercent: s.siblingDiscountPercent !== undefined ? Number(s.siblingDiscountPercent) : 0,
         transportFee: s.transportFee !== undefined ? Number(s.transportFee) : (s.isTransport ? 1500 : 0),
         isTransport: s.isTransport !== undefined ? s.isTransport : Boolean(Number(s.transportFee || 0) > 0),
         transportRoute: s.transportRoute || '',
@@ -630,6 +809,27 @@ export function AppProvider({ children }) {
     return local ? JSON.parse(local) : [];
   });
 
+  // School Profile & Branding
+  const [schoolProfile, setSchoolProfile] = useState(() => {
+    const local = localStorage.getItem('peace_school_profile');
+    if (local) {
+      try {
+        return { ...DEFAULT_SCHOOL_PROFILE, ...JSON.parse(local) };
+      } catch (e) {
+        return DEFAULT_SCHOOL_PROFILE;
+      }
+    }
+    return DEFAULT_SCHOOL_PROFILE;
+  });
+
+  const updateSchoolProfile = (newProfile) => {
+    const updated = { ...schoolProfile, ...newProfile };
+    setSchoolProfile(updated);
+    localStorage.setItem('peace_school_profile', JSON.stringify(updated));
+    syncDocToFirestore('settings', 'school_profile', updated);
+    showToast('✓ School details & logo updated successfully!', 'success');
+  };
+
   // Sibling Discount Rules
   const [siblingDiscountRules, setSiblingDiscountRules] = useState(() => {
     const local = localStorage.getItem('peace_sibling_rules');
@@ -646,6 +846,278 @@ export function AppProvider({ children }) {
     localStorage.setItem('peace_sibling_rules', JSON.stringify(newRules));
     syncDocToFirestore('settings', 'sibling_rules', newRules);
     showToast('✓ Sibling fee discount policy updated successfully!', 'success');
+  };
+
+  // Sibling Families state
+  const [families, setFamilies] = useState(() => {
+    const local = localStorage.getItem('peace_families');
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {
+        return INITIAL_FAMILIES;
+      }
+    }
+    return INITIAL_FAMILIES;
+  });
+
+  const addFamily = (newFamily) => {
+    const familyCode = newFamily.familyCode || `FAM-${Math.floor(100 + Math.random() * 900)}`;
+    const familyObj = {
+      ...newFamily,
+      id: newFamily.id || familyCode,
+      familyCode,
+      studentIds: newFamily.studentIds || []
+    };
+    const updated = [familyObj, ...families];
+    setFamilies(updated);
+    localStorage.setItem('peace_families', JSON.stringify(updated));
+    syncDocToFirestore('families', familyObj.id, familyObj);
+    showToast(`✓ Family "${familyObj.fatherName}" registered successfully!`, 'success');
+    return familyObj;
+  };
+
+  const updateFamily = (familyId, updatedData) => {
+    const updated = families.map(f => f.id === familyId ? { ...f, ...updatedData } : f);
+    setFamilies(updated);
+    localStorage.setItem('peace_families', JSON.stringify(updated));
+    const target = updated.find(f => f.id === familyId);
+    if (target) syncDocToFirestore('families', familyId, target);
+    showToast('✓ Family information updated successfully!', 'success');
+  };
+
+  const deleteFamily = (familyId) => {
+    setStudents(prev => prev.map(s => s.familyId === familyId ? { ...s, familyId: null, siblingRank: 1, siblingDiscountPercent: 0 } : s));
+    const updated = families.filter(f => f.id !== familyId);
+    setFamilies(updated);
+    localStorage.setItem('peace_families', JSON.stringify(updated));
+    removeDocFromFirestore('families', familyId);
+    showToast('✓ Family group removed', 'info');
+  };
+
+  const linkSibling = (familyId, studentId, rank = 1) => {
+    const ruleKeys = ['sibling1', 'sibling2', 'sibling3', 'sibling4Plus'];
+    const rIdx = Math.min((Number(rank) || 1) - 1, 3);
+    const ruleKey = ruleKeys[Math.max(0, rIdx)];
+    const discountPercent = siblingDiscountRules[ruleKey] ?? (rIdx === 0 ? 0 : rIdx === 1 ? 25 : rIdx === 2 ? 50 : 75);
+
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        const updatedStudent = {
+          ...s,
+          familyId,
+          siblingRank: Number(rank) || 1,
+          siblingDiscountPercent: discountPercent
+        };
+        syncDocToFirestore('students', studentId, updatedStudent);
+        return updatedStudent;
+      }
+      return s;
+    }));
+
+    setFamilies(prev => prev.map(f => {
+      if (f.id === familyId) {
+        const existingIds = f.studentIds || [];
+        const studentIds = existingIds.includes(studentId) ? existingIds : [...existingIds, studentId];
+        const updatedFam = { ...f, studentIds };
+        syncDocToFirestore('families', familyId, updatedFam);
+        return updatedFam;
+      }
+      return f;
+    }));
+
+    showToast('✓ Sibling linked to family successfully!', 'success');
+  };
+
+  const unlinkSibling = (studentId) => {
+    const student = students.find(s => s.id === studentId);
+    const famId = student?.familyId;
+
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        const updated = { ...s, familyId: null, siblingRank: 1, siblingDiscountPercent: 0 };
+        syncDocToFirestore('students', studentId, updated);
+        return updated;
+      }
+      return s;
+    }));
+
+    if (famId) {
+      setFamilies(prev => prev.map(f => {
+        if (f.id === famId) {
+          const updatedFam = { ...f, studentIds: (f.studentIds || []).filter(id => id !== studentId) };
+          syncDocToFirestore('families', famId, updatedFam);
+          return updatedFam;
+        }
+        return f;
+      }));
+    }
+
+    showToast('✓ Sibling unlinked from family', 'info');
+  };
+
+  const reorderSiblings = (familyId, orderedStudentIds) => {
+    const ruleKeys = ['sibling1', 'sibling2', 'sibling3', 'sibling4Plus'];
+    setStudents(prev => prev.map(s => {
+      const idx = orderedStudentIds.indexOf(s.id);
+      if (idx !== -1) {
+        const rank = idx + 1;
+        const rIdx = Math.min(idx, 3);
+        const ruleKey = ruleKeys[rIdx];
+        const discountPercent = siblingDiscountRules[ruleKey] ?? (rIdx === 0 ? 0 : rIdx === 1 ? 25 : rIdx === 2 ? 50 : 75);
+        const updated = { ...s, familyId, siblingRank: rank, siblingDiscountPercent: discountPercent };
+        syncDocToFirestore('students', s.id, updated);
+        return updated;
+      }
+      return s;
+    }));
+
+    setFamilies(prev => prev.map(f => {
+      if (f.id === familyId) {
+        const updatedFam = { ...f, studentIds: orderedStudentIds };
+        syncDocToFirestore('families', familyId, updatedFam);
+        return updatedFam;
+      }
+      return f;
+    }));
+
+    showToast('✓ Sibling order and discounts re-calculated!', 'success');
+  };
+
+  // Generate Fee Slips for a Family (all siblings)
+  const generateFamilyFeeSlips = ({ familyId, month = 'April 2026', dueDate = '2026-04-15' }) => {
+    const family = families.find(f => f.id === familyId);
+    if (!family) return { success: false, error: 'Family not found' };
+
+    const famStudents = students.filter(s => s.familyId === familyId || (family.studentIds && family.studentIds.includes(s.id)));
+    if (famStudents.length === 0) return { success: false, error: 'No students found in this family' };
+
+    // Sort by siblingRank
+    famStudents.sort((a, b) => (Number(a.siblingRank) || 1) - (Number(b.siblingRank) || 1));
+
+    const ruleKeys = ['sibling1', 'sibling2', 'sibling3', 'sibling4Plus'];
+    const generatedSlips = [];
+
+    setFeeSlips(prev => {
+      let currentSlips = [...prev];
+      famStudents.forEach((student, idx) => {
+        const rank = Number(student.siblingRank) || (idx + 1);
+        const rIdx = Math.min(rank - 1, 3);
+        const ruleKey = ruleKeys[Math.max(0, rIdx)];
+        const discPct = siblingDiscountRules[ruleKey] ?? (rIdx === 0 ? 0 : rIdx === 1 ? 25 : rIdx === 2 ? 50 : 75);
+
+        const tuition = Number(student.monthlyFee) || 0;
+        const discountAmt = Math.round((tuition * discPct) / 100);
+        const transport = (student.isTransport || Number(student.transportFee) > 0) ? (Number(student.transportFee) || 0) : 0;
+        const subtotal = tuition + transport;
+        const total = Math.max(0, subtotal - discountAmt);
+
+        const existingIdx = currentSlips.findIndex(s => (s.studentId === student.id || s.rollNo === student.rollNo) && s.month === month);
+        const challanNo = existingIdx >= 0 ? currentSlips[existingIdx].challanNo : `CH-${Date.now().toString().slice(-4)}-${Math.floor(100 + Math.random() * 900)}`;
+
+        const slipData = {
+          id: existingIdx >= 0 ? currentSlips[existingIdx].id : `slip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          challanNo,
+          studentId: student.id,
+          studentName: student.name,
+          fatherName: student.fatherName || family.fatherName,
+          rollNo: student.rollNo,
+          campus: student.campus,
+          classGrade: student.classGrade,
+          section: student.section || 'A',
+          month,
+          issueDate: new Date().toISOString().split('T')[0],
+          dueDate,
+          tuitionFee: tuition,
+          transportFee: transport,
+          admissionFee: 0,
+          examFee: 0,
+          miscCharges: 0,
+          miscDescription: '',
+          discount: discountAmt,
+          discountPercent: discPct,
+          discountReason: discPct > 0 ? `Sibling Concession (Child #${rank} - ${discPct}%)` : '',
+          subtotal,
+          totalAmount: total,
+          amountPaid: existingIdx >= 0 ? (currentSlips[existingIdx].amountPaid || 0) : 0,
+          status: existingIdx >= 0 ? currentSlips[existingIdx].status : 'Unpaid',
+          phone: student.phone || family.phone || '',
+          familyId,
+          notes: `Sibling Package (${family.fatherName})`
+        };
+
+        if (existingIdx >= 0) {
+          currentSlips[existingIdx] = slipData;
+        } else {
+          currentSlips.push(slipData);
+        }
+        syncDocToFirestore('fee_slips', slipData.id, slipData);
+        generatedSlips.push(slipData);
+      });
+      return currentSlips;
+    });
+
+    showToast(`✓ Generated sibling fee challans for ${famStudents.length} children (${month})!`, 'success');
+    return { success: true, slips: generatedSlips };
+  };
+
+  // Pay Family Fee (Consolidated)
+  const payFamilyFee = ({ familyId, month, amountPaid, paymentMethod = 'Cash at Counter', paymentRemarks = '' }) => {
+    const family = families.find(f => f.id === familyId);
+    const famStudents = students.filter(s => s.familyId === familyId || (family?.studentIds && family.studentIds.includes(s.id)));
+    
+    // Find matching slips for this family for this month
+    const matchingSlips = feeSlips.filter(s => 
+      famStudents.some(std => std.id === s.studentId || std.rollNo === s.rollNo) && 
+      s.month === month
+    );
+
+    if (matchingSlips.length === 0) {
+      showToast('No generated challans found for this family for the selected month.', 'danger');
+      return;
+    }
+
+    let remainingToDistribute = Number(amountPaid) || 0;
+    const today = new Date().toISOString().split('T')[0];
+
+    setFeeSlips(prev => {
+      return prev.map(s => {
+        if (matchingSlips.some(m => m.id === s.id)) {
+          const dueForThisSlip = Math.max(0, (s.totalAmount || 0) - (s.amountPaid || 0));
+          const payThis = Math.min(remainingToDistribute, dueForThisSlip);
+          remainingToDistribute = Math.max(0, remainingToDistribute - payThis);
+
+          const newAmountPaid = (s.amountPaid || 0) + payThis;
+          let newStatus = s.status;
+          if (newAmountPaid >= s.totalAmount) newStatus = 'Paid';
+          else if (newAmountPaid > 0) newStatus = 'Partial';
+
+          const updated = {
+            ...s,
+            amountPaid: newAmountPaid,
+            status: newStatus,
+            paidDate: today,
+            paymentMethod,
+            paymentRemarks: paymentRemarks || `Family Consolidated Payment (${family?.fatherName || 'Parent'})`
+          };
+          syncDocToFirestore('fee_slips', s.id, updated);
+          return updated;
+        }
+        return s;
+      });
+    });
+
+    // Add ledger entry
+    addLedgerEntry({
+      date: today,
+      description: `Family Fee Collection: ${family?.fatherName || 'Parent'} (${famStudents.length} Siblings) - ${month}`,
+      category: 'Fee Collection',
+      campus: famStudents[0]?.campus || 'ALL',
+      type: 'Credit',
+      amount: Number(amountPaid) || 0
+    });
+
+    showToast(`✓ Received Rs. ${(Number(amountPaid) || 0).toLocaleString()} for ${family?.fatherName || 'Family'}!`, 'success');
   };
 
   // Toast notification state
@@ -708,6 +1180,8 @@ export function AppProvider({ children }) {
       permissions: {
         dashboard: true,
         students: true,
+        siblings: true,
+        siblingfees: true,
         feeslips: true,
         staff: true,
         attendance: true,
@@ -1127,6 +1601,120 @@ export function AppProvider({ children }) {
       }
     }
   }, [fetchAllFromBackend]);
+
+  // Real-time Firestore Live Synchronization across all online devices / admins
+  useEffect(() => {
+    if (!firebaseConnected) return;
+    const currentDb = getFirestoreDb();
+    if (!currentDb) return;
+
+    const unsubs = [];
+
+    try {
+      // 1. Live Students
+      const unsubStudents = onSnapshot(collection(currentDb, 'students'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setStudents(list);
+          localStorage.setItem('peace_students', JSON.stringify(list));
+        }
+      }, (err) => console.warn('Students live sync:', err));
+      unsubs.push(unsubStudents);
+
+      // 2. Live Fee Slips
+      const unsubFeeSlips = onSnapshot(collection(currentDb, 'feeSlips'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setFeeSlips(list);
+          localStorage.setItem('peace_fee_slips', JSON.stringify(list));
+        }
+      }, (err) => console.warn('FeeSlips live sync:', err));
+      unsubs.push(unsubFeeSlips);
+
+      // 3. Live Staff
+      const unsubStaff = onSnapshot(collection(currentDb, 'staff'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setStaff(list);
+          localStorage.setItem('peace_staff', JSON.stringify(list));
+        }
+      }, (err) => console.warn('Staff live sync:', err));
+      unsubs.push(unsubStaff);
+
+      // 4. Live Ledger
+      const unsubLedger = onSnapshot(collection(currentDb, 'ledger'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setLedger(list);
+          localStorage.setItem('peace_ledger', JSON.stringify(list));
+        }
+      }, (err) => console.warn('Ledger live sync:', err));
+      unsubs.push(unsubLedger);
+
+      // 5. Live Users & Real-time Permissions
+      const unsubUsers = onSnapshot(collection(currentDb, 'users'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setUsers(list);
+          localStorage.setItem('peace_users', JSON.stringify(list));
+          
+          // Auto-sync current user permissions if updated by Super Admin
+          if (currentUser?.id) {
+            const myLatest = list.find(u => u.id === currentUser.id);
+            if (myLatest && (JSON.stringify(myLatest.permissions) !== JSON.stringify(currentUser.permissions) || myLatest.status !== currentUser.status)) {
+              setCurrentUser(myLatest);
+              localStorage.setItem('shezad_user', JSON.stringify(myLatest));
+            }
+          }
+        }
+      }, (err) => console.warn('Users live sync:', err));
+      unsubs.push(unsubUsers);
+
+      // 6. Live Campuses
+      const unsubCampuses = onSnapshot(collection(currentDb, 'campuses'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+          setCampuses(list);
+          localStorage.setItem('peace_campuses', JSON.stringify(list));
+        }
+      }, (err) => console.warn('Campuses live sync:', err));
+      unsubs.push(unsubCampuses);
+
+      // 7. Live Attendance
+      const unsubAttendance = onSnapshot(collection(currentDb, 'attendance'), (snap) => {
+        if (!snap.empty) {
+          const list = [];
+          snap.forEach(d => {
+            const data = d.data();
+            if (data.records && Array.isArray(data.records)) {
+              list.push(...data.records);
+            } else {
+              list.push({ id: d.id, ...data });
+            }
+          });
+          if (list.length > 0) {
+            setAttendance(list);
+            localStorage.setItem('peace_attendance', JSON.stringify(list));
+          }
+        }
+      }, (err) => console.warn('Attendance live sync:', err));
+      unsubs.push(unsubAttendance);
+    } catch (e) {
+      console.warn('Real-time synchronization setup error:', e);
+    }
+
+    return () => {
+      unsubs.forEach(unsub => {
+        if (typeof unsub === 'function') unsub();
+      });
+    };
+  }, [firebaseConnected, currentUser?.id]);
 
   // Filtered lists based on current selected campus
   const filteredStudents = selectedCampus === 'ALL' 
@@ -1832,6 +2420,8 @@ export function AppProvider({ children }) {
     setFeeSlips(INITIAL_FEE_SLIPS);
     setLedger(INITIAL_LEDGER);
     setUsers(INITIAL_USERS);
+    setFamilies(INITIAL_FAMILIES);
+    setSchoolProfile(DEFAULT_SCHOOL_PROFILE);
     setAttendance([]);
     localStorage.clear();
     showToast('✓ Demo data restored to original state', 'info');
@@ -1867,8 +2457,24 @@ export function AppProvider({ children }) {
       updateFeeSlip,
       deleteFeeSlip,
       getStudentYearlyFeeLedger,
+      
+      // Sibling Management & Family Portal
+      families,
+      addFamily,
+      updateFamily,
+      deleteFamily,
+      linkSibling,
+      unlinkSibling,
+      reorderSiblings,
+      generateFamilyFeeSlips,
+      payFamilyFee,
       siblingDiscountRules,
       updateSiblingDiscountRules,
+
+      // School Profile & Branding Customization
+      schoolProfile,
+      updateSchoolProfile,
+
       ledger,
       addLedgerEntry,
       deleteLedgerEntry,

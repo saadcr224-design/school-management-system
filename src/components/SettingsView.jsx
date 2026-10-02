@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import SchoolLogo from './SchoolLogo';
 
 export default function SettingsView() {
   const { 
@@ -10,6 +11,8 @@ export default function SettingsView() {
     allStaff,
     siblingDiscountRules,
     updateSiblingDiscountRules,
+    schoolProfile,
+    updateSchoolProfile,
     resetToScreenshotDemo,
     softwareVersion,
     lastUpdatedTime,
@@ -18,12 +21,13 @@ export default function SettingsView() {
     firebaseConnected,
     firebaseInfo,
     syncToFirebase,
-    currentUser
+    currentUser,
+    showToast
   } = useApp();
 
   const isSuperAdmin = currentUser?.role === 'Super Admin';
 
-  const [activeTab, setActiveTab] = useState('campuses'); // 'campuses', 'sibling_policy', 'update_system', 'general'
+  const [activeTab, setActiveTab] = useState('school_profile'); // 'school_profile', 'campuses', 'sibling_policy', 'update_system', 'general'
   const [campusToDelete, setCampusToDelete] = useState(null);
   
   // Sibling discount policy local edit state
@@ -33,6 +37,54 @@ export default function SettingsView() {
     sibling3: 50,
     sibling4Plus: 75
   });
+
+  // School Profile local edit state
+  const [profileForm, setProfileForm] = useState({
+    name: schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY',
+    tagline: schoolProfile?.tagline || 'Schools & Colleges',
+    phone: schoolProfile?.phone || '0992-123456 / 0300-1234567',
+    helpline: schoolProfile?.helpline || '0313-9413450',
+    email: schoolProfile?.email || 'info@shezadacademy.edu.pk',
+    website: schoolProfile?.website || 'www.shezadacademy.edu.pk',
+    address: schoolProfile?.address || 'Main Mansehra Road, Supply & Mandian, Abbottabad, Pakistan',
+    registrationNo: schoolProfile?.registrationNo || 'REG-BISE-ABB-2026-9988',
+    logoUrl: schoolProfile?.logoUrl || '',
+    bankName: schoolProfile?.bankName || 'Habib Bank Limited (HBL)',
+    accountTitle: schoolProfile?.accountTitle || 'Shezad Children Academy Accounts',
+    accountNo: schoolProfile?.accountNo || '1234-56789012-03',
+    branchCode: schoolProfile?.branchCode || '0452',
+    iban: schoolProfile?.iban || 'PK36HABB0000123456789012',
+    challanInstructions: schoolProfile?.challanInstructions || '1. Please pay fee on or before 10th of every month.\n2. Surcharge after due date Rs. 200 will be charged.\n3. Fee once paid is non-refundable and non-transferable.',
+    principalSignatureText: schoolProfile?.principalSignatureText || 'Principal / Accounts Officer'
+  });
+
+  // Handle Logo Upload from Computer
+  const handleLogoFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, SVG, WebP)', 'danger');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image size should be less than 2MB for optimal performance', 'warning');
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = reader.result;
+      setProfileForm(prev => ({ ...prev, logoUrl: base64Data }));
+      showToast('✓ Custom logo loaded! Click "Save School Profile" to apply.', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileSubmit = (e) => {
+    e.preventDefault();
+    updateSchoolProfile(profileForm);
+  };
 
   // New Campus state
   const [isAddCampusOpen, setIsAddCampusOpen] = useState(false);
@@ -62,17 +114,24 @@ export default function SettingsView() {
     <div className="content-body">
       <div className="page-title-section">
         <h1 className="page-title">System Settings & Configurations</h1>
-        <p className="page-subtitle">Configure campus branches, sibling fee concession policies, software updates, and institutional academic profiles</p>
+        <p className="page-subtitle">Configure school identity, logo, campus branches, sibling fee policies, software updates, and cloud sync</p>
       </div>
 
-      {/* Tabs */}
+      {/* Navigation Tabs */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #cbd5e1', marginBottom: '20px', paddingBottom: '2px', flexWrap: 'wrap' }}>
+        <button 
+          className={`nav-item ${activeTab === 'school_profile' ? 'active' : ''}`}
+          style={{ width: 'auto', padding: '8px 18px', borderRadius: '6px', background: activeTab === 'school_profile' ? '#eff6ff' : 'transparent', color: activeTab === 'school_profile' ? '#1e40af' : 'inherit', borderColor: activeTab === 'school_profile' ? '#3b82f6' : 'transparent', fontWeight: '700' }}
+          onClick={() => setActiveTab('school_profile')}
+        >
+          🏫 School Profile & Logo
+        </button>
         <button 
           className={`nav-item ${activeTab === 'campuses' ? 'active' : ''}`}
           style={{ width: 'auto', padding: '8px 18px', borderRadius: '6px' }}
           onClick={() => setActiveTab('campuses')}
         >
-          🏫 Campuses & Branches ({campuses.length})
+          📍 Campuses & Branches ({campuses.length})
         </button>
         <button 
           className={`nav-item ${activeTab === 'sibling_policy' ? 'active' : ''}`}
@@ -93,11 +152,336 @@ export default function SettingsView() {
           style={{ width: 'auto', padding: '8px 18px', borderRadius: '6px' }}
           onClick={() => setActiveTab('general')}
         >
-          ⚙️ Academic Session & Profile
+          ⚙️ Academic Session
         </button>
       </div>
 
-      {/* Tab 1: Campuses */}
+      {/* TAB 1: School Profile, Logo & Branding */}
+      {activeTab === 'school_profile' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px' }}>
+          <div className="section-card">
+            <div className="section-card-header">
+              <div>
+                <h3 className="chart-title">🏫 Institutional Identity, Logo & Challan Details</h3>
+                <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  Enter your school's official details. These will dynamically appear on the Sidebar, Fee Challans, Vouchers, Reports, and ID cards!
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleProfileSubmit}>
+              <div className="form-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                
+                {/* School Name */}
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label" style={{ fontWeight: '800', color: '#0f1d38' }}>
+                    Institution Full Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. SHEZAD CHILDREN ACADEMY"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    required
+                    style={{ fontWeight: '700', fontSize: '1rem' }}
+                  />
+                  <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '3px', display: 'block' }}>
+                    Printed as primary brand header across all challans and reports
+                  </span>
+                </div>
+
+                {/* Tagline / Subtitle */}
+                <div className="form-group">
+                  <label className="form-label">School Tagline / Subtitle</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Schools & Colleges"
+                    value={profileForm.tagline}
+                    onChange={(e) => setProfileForm({ ...profileForm, tagline: e.target.value })}
+                  />
+                </div>
+
+                {/* Registration / Affiliation No */}
+                <div className="form-group">
+                  <label className="form-label">Registration / Board Code</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. REG-BISE-ABB-2026-9988"
+                    value={profileForm.registrationNo}
+                    onChange={(e) => setProfileForm({ ...profileForm, registrationNo: e.target.value })}
+                  />
+                </div>
+
+                {/* Primary Contact Numbers */}
+                <div className="form-group">
+                  <label className="form-label">Official Phone / Landline</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. 0992-123456 / 0300-1234567"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    required
+                  />
+                </div>
+
+                {/* Helpline Mobile / WhatsApp */}
+                <div className="form-group">
+                  <label className="form-label">Helpline / WhatsApp Number</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. 0313-9413450"
+                    value={profileForm.helpline}
+                    onChange={(e) => setProfileForm({ ...profileForm, helpline: e.target.value })}
+                  />
+                </div>
+
+                {/* Official Email */}
+                <div className="form-group">
+                  <label className="form-label">Official Email</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    placeholder="e.g. info@shezadacademy.edu.pk"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  />
+                </div>
+
+                {/* Official Website */}
+                <div className="form-group">
+                  <label className="form-label">Official Website</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. www.shezadacademy.edu.pk"
+                    value={profileForm.website}
+                    onChange={(e) => setProfileForm({ ...profileForm, website: e.target.value })}
+                  />
+                </div>
+
+                {/* Physical Head Office Address */}
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Head Office / Main Campus Address</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Main Mansehra Road, Supply & Mandian, Abbottabad, Pakistan"
+                    value={profileForm.address}
+                    onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                  />
+                </div>
+
+                {/* --- BANK ACCOUNT DETAILS FOR CHALLANS --- */}
+                <div style={{ gridColumn: 'span 2', marginTop: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 10px', color: '#0369a1', fontSize: '0.94rem', fontWeight: '800' }}>
+                    🏦 School Bank Deposit Account (Printed on Fee Challans)
+                  </h4>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Bank Name</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Habib Bank Limited (HBL)"
+                    value={profileForm.bankName}
+                    onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Account Title</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Shezad Children Academy Accounts"
+                    value={profileForm.accountTitle}
+                    onChange={(e) => setProfileForm({ ...profileForm, accountTitle: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Account Number</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. 1234-56789012-03"
+                    value={profileForm.accountNo}
+                    onChange={(e) => setProfileForm({ ...profileForm, accountNo: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Branch Code / IBAN</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. 0452 / PK36HABB0000123456789012"
+                    value={profileForm.iban}
+                    onChange={(e) => setProfileForm({ ...profileForm, iban: e.target.value })}
+                  />
+                </div>
+
+                {/* --- CHALLAN INSTRUCTIONS & SIGNATURE --- */}
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Fee Challan Terms & Instructions (Bottom of slip)</label>
+                  <textarea 
+                    className="form-input" 
+                    rows={3}
+                    value={profileForm.challanInstructions}
+                    onChange={(e) => setProfileForm({ ...profileForm, challanInstructions: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Authorized Signature Designation Text</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. Principal / Accounts Officer"
+                    value={profileForm.principalSignatureText}
+                    onChange={(e) => setProfileForm({ ...profileForm, principalSignatureText: e.target.value })}
+                  />
+                </div>
+
+              </div>
+
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="action-btn-primary" style={{ padding: '10px 28px', fontSize: '0.94rem' }}>
+                  💾 Save School Profile & Branding
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Right Column: Logo Uploader & Live Preview */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Logo Manager Card */}
+            <div className="section-card" style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0' }}>
+              <h4 style={{ margin: '0 0 10px', color: '#0f1d38', fontSize: '0.96rem', fontWeight: '800' }}>
+                🖼️ School Logo Manager
+              </h4>
+              <p style={{ margin: '0 0 14px', fontSize: '0.8rem', color: '#64748b' }}>
+                Upload your school's official crest, badge, or emblem. Works offline in browser and syncs to database.
+              </p>
+
+              {/* Upload Box */}
+              <div style={{ 
+                border: '2px dashed #93c5fd', 
+                borderRadius: '10px', 
+                padding: '18px', 
+                textAlign: 'center', 
+                background: '#eff6ff',
+                marginBottom: '14px'
+              }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <SchoolLogo size={64} customLogoUrl={profileForm.logoUrl} customName={profileForm.name} customTagline={profileForm.tagline} />
+                </div>
+                
+                <input 
+                  type="file" 
+                  id="logoFileInput" 
+                  accept="image/*" 
+                  onChange={handleLogoFileUpload}
+                  style={{ display: 'none' }} 
+                />
+
+                <label 
+                  htmlFor="logoFileInput"
+                  className="action-btn-primary"
+                  style={{ display: 'inline-block', cursor: 'pointer', padding: '8px 18px', fontSize: '0.84rem' }}
+                >
+                  📁 Choose Image from Computer
+                </label>
+                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '6px' }}>
+                  PNG, JPG, SVG, WebP (Square or circular logo recommended)
+                </div>
+              </div>
+
+              {/* Logo URL Input */}
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label" style={{ fontSize: '0.78rem' }}>Or Paste Image URL directly:</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="https://your-domain.com/logo.png"
+                  value={profileForm.logoUrl}
+                  onChange={(e) => setProfileForm({ ...profileForm, logoUrl: e.target.value })}
+                  style={{ fontSize: '0.82rem' }}
+                />
+              </div>
+
+              {profileForm.logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileForm({ ...profileForm, logoUrl: '' });
+                    showToast('Logo reset to built-in vector crest.', 'info');
+                  }}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    color: '#64748b',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  🔄 Reset to Built-in Royal Vector Crest
+                </button>
+              )}
+            </div>
+
+            {/* Real-time Header & Challan Live Preview */}
+            <div className="section-card" style={{ background: '#ffffff', border: '1.5px solid #bfdbfe' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, color: '#1e40af', fontSize: '0.9rem', fontWeight: '800' }}>
+                  👁️ Real-time Fee Challan Header Preview
+                </h4>
+                <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>Live</span>
+              </div>
+
+              <div style={{ 
+                border: '1px solid #cbd5e1', 
+                borderRadius: '8px', 
+                padding: '14px', 
+                background: '#ffffff',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '2px solid #0f1d38', paddingBottom: '10px', marginBottom: '8px' }}>
+                  <SchoolLogo size={42} customLogoUrl={profileForm.logoUrl} />
+                  <div>
+                    <div style={{ fontWeight: '900', color: '#0f1d38', fontSize: '0.98rem', letterSpacing: '0.02em', lineHeight: 1.15 }}>
+                      {profileForm.name || 'SHEZAD CHILDREN ACADEMY'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#0369a1', fontWeight: '700' }}>
+                      {profileForm.tagline || 'Schools & Colleges'} · Helpline: {profileForm.helpline || profileForm.phone}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                      Reg: {profileForm.registrationNo} · {profileForm.address}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', fontSize: '0.72rem', color: '#1e3a8a', border: '1px solid #e2e8f0' }}>
+                  <strong>Bank:</strong> {profileForm.bankName} | <strong>A/C:</strong> {profileForm.accountNo}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: Campuses */}
       {activeTab === 'campuses' && (
         <div className="section-card">
           <div className="section-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -191,7 +575,7 @@ export default function SettingsView() {
         </div>
       )}
 
-      {/* Delete Campus In-App Confirmation Modal */}
+      {/* Delete Campus Modal */}
       {campusToDelete && (
         <div className="modal-overlay" onClick={() => setCampusToDelete(null)}>
           <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
@@ -224,7 +608,7 @@ export default function SettingsView() {
         </div>
       )}
 
-      {/* Tab: Sibling Fee Concession Policy */}
+      {/* TAB 3: Sibling Fee Concession Policy */}
       {activeTab === 'sibling_policy' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
           <div className="section-card">
@@ -343,24 +727,23 @@ export default function SettingsView() {
             </form>
           </div>
 
-          {/* Sibling Guide card */}
+          {/* Sibling Guide Card */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="section-card" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
               <h4 style={{ color: '#166534', fontSize: '1rem', fontWeight: '800', marginBottom: '8px' }}>
-                💡 How Sibling Fee Generation Works
+                💡 Dedicated Sibling Portals
               </h4>
               <ul style={{ fontSize: '0.82rem', color: '#15803d', lineHeight: 1.8, paddingLeft: '18px' }}>
-                <li>When you open <strong>"Fee Slips & Challans"</strong> &gt; <strong>"Generate Fee Challan"</strong>, switch to the <strong>"👨‍👩‍👧‍👦 Sibling Discount Package"</strong> tab.</li>
-                <li>Pick the family father name to load all brothers & sisters automatically.</li>
-                <li>The system applies your policy rules automatically with live financial calculations.</li>
-                <li>When printed, each 2-copy bank challan clearly shows the <strong>Sibling Concession Line Item</strong>!</li>
+                <li><strong>Sibling Portal:</strong> Manage family units, link brothers and sisters, and adjust child order hierarchy.</li>
+                <li><strong>Sibling Fee Management:</strong> View consolidated family billing, 1-click batch generate sibling challans, and collect unified payments.</li>
+                <li><strong>Family 2-Copy Challan:</strong> Official 2-part vouchers (School Copy & Student Copy) list all siblings on one printable sheet!</li>
               </ul>
             </div>
 
             <div className="section-card" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
               <h4 style={{ color: '#92400e', fontSize: '0.95rem', marginBottom: '8px' }}>Demo State Management</h4>
               <p style={{ fontSize: '0.8rem', color: '#78350f', lineHeight: 1.5, marginBottom: '12px' }}>
-                You can restore the initial sample dataset (students, staff, campuses, ledger) at any time.
+                You can restore the initial sample dataset (students, staff, campuses, sibling families, ledger) at any time.
               </p>
               <button 
                 type="button"
@@ -379,7 +762,7 @@ export default function SettingsView() {
         </div>
       )}
 
-      {/* Tab: Software Update & Cloud Sync */}
+      {/* TAB 4: Software Update & Cloud Sync */}
       {activeTab === 'update_system' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
           <div className="section-card">
@@ -411,7 +794,7 @@ export default function SettingsView() {
                   🚀 1-Click Universal Software Update
                 </h4>
                 <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#0284c7', lineHeight: 1.5 }}>
-                  Clicking "Check & Apply Software Update" checks all academic modules (April-to-March reporting, 2-copy fee challan templates, transport fee structures, and defaulter reminders) and updates local caches without deleting historical data.
+                  Clicking "Check & Apply Software Update" checks all academic modules (Sibling Portals, Custom Logo Customization, April-to-March reporting, and 2-copy fee challan templates) and updates local caches without deleting historical data.
                 </p>
 
                 <button 
@@ -451,29 +834,29 @@ export default function SettingsView() {
               📋 Installed Enhancements Checklist
             </h4>
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.82rem', color: '#475569', lineHeight: 1.9 }}>
+              <li>✓ <strong>Sibling Portal:</strong> Directory, family cards, link siblings, and order reordering.</li>
+              <li>✓ <strong>Sibling Fee Management:</strong> Family consolidated billing and 2-copy unified challans.</li>
+              <li>✓ <strong>School Logo & Details:</strong> Custom logo upload, name, phone, bank accounts in Settings.</li>
               <li>✓ <strong>Bank Copy Removal:</strong> Fee slip redesigned to 2 equal parts (School & Student).</li>
               <li>✓ <strong>Transport Fee Module:</strong> Separately calculated and reported transport charges.</li>
               <li>✓ <strong>April to March Cycle:</strong> Financial year reports & charts sequence strictly April → March.</li>
-              <li>✓ <strong>Miscellaneous Charges:</strong> Uniform, books, and event charges integrated with fee slip.</li>
-              <li>✓ <strong>Fee History Preservation:</strong> Modifying fee structures never alters previous vouchers.</li>
               <li>✓ <strong>Contact Phone Numbers:</strong> Direct visibility on fee collection, reminders, and slips.</li>
-              <li>✓ <strong>8 Financial Reports:</strong> Monthly, Student, Defaulters, Collection, Discount, Transport, Misc, and Admission.</li>
             </ul>
           </div>
         </div>
       )}
 
-      {/* Tab 3: General Settings */}
+      {/* TAB 5: General Academic Session */}
       {activeTab === 'general' && (
         <div className="section-card" style={{ maxWidth: '650px' }}>
           <h3 className="chart-title" style={{ marginBottom: '16px' }}>Academic Session Configuration</h3>
           <div className="form-grid single">
             <div className="form-group">
-              <label className="form-label">Institution Full Name</label>
+              <label className="form-label">Institution Name</label>
               <input 
                 type="text" 
                 className="form-input" 
-                defaultValue="Shezad Children Academy - Schools & Colleges" 
+                value={profileForm.name} 
                 readOnly
               />
             </div>

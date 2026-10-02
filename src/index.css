@@ -1321,3 +1321,80 @@ h1, h2, h3, h4, h5, h6 {
 .toast-message {
   line-height: 1.4;
 }
+
+/* ==========================================================================
+   SIBLING PORTAL & SIBLING FEE MANAGEMENT STYLES
+   ========================================================================== */
+
+.sibling-family-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-card);
+}
+
+.sibling-family-card:hover {
+  border-color: #93c5fd;
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.sibling-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.sibling-rank-1 {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.sibling-rank-2 {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.sibling-rank-3 {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.sibling-rank-4 {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #ddd6fe;
+}
+
+.school-brand-logo-wrap img {
+  border-radius: 8px;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.school-brand-logo-wrap img:hover {
+  transform: scale(1.04);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .printable-challan-sheet {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+}
+

@@ -45,7 +45,9 @@ export default function UserManagementView() {
   const modulesList = [
     { key: 'dashboard', label: 'Dashboard & Analytics', desc: '8 KPI cards, enrollment & fee distribution charts' },
     { key: 'students', label: 'Students Management', desc: 'Directory, admissions, edit profile, printable ID cards' },
-    { key: 'feeslips', label: 'Fee Slips & Challans', desc: 'Issue challans, receive payments, print 3-copy bank slips' },
+    { key: 'siblings', label: 'Sibling Portal', desc: 'Manage family units, link brothers and sisters, child order' },
+    { key: 'siblingfees', label: 'Sibling Fee Management', desc: 'Family consolidated billing, unified collections & 2-copy vouchers' },
+    { key: 'feeslips', label: 'Fee Slips & Challans', desc: 'Issue challans, receive payments, print 2-copy bank slips' },
     { key: 'staff', label: 'Staff & Payroll', desc: 'Faculty directory, monthly salary disbursement & vouchers' },
     { key: 'attendance', label: 'Daily Attendance', desc: 'Mark student & staff daily attendance' },
     { key: 'ledger', label: 'School Financial Ledger', desc: 'Double-entry cash flow journal, vouchers, CSV export' },

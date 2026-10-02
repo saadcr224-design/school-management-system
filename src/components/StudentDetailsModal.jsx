@@ -11,7 +11,7 @@ export default function StudentDetailsModal({
   onOpenEditStudent,
   onOpenEditFeeStructure
 }) {
-  const { feeSlips, campuses, showToast } = useApp();
+  const { feeSlips, campuses, schoolProfile, showToast } = useApp();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'fee_structure', 'history', 'id_card'
 
   if (!isOpen || !student) return null;
@@ -650,10 +650,10 @@ export default function StudentDetailsModal({
               }}>
                 <div style={{ background: 'linear-gradient(135deg, #0f1d38 0%, #1e3a8a 100%)', color: '#fff', padding: '16px 14px', textAlign: 'center' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-                    <SchoolLogo width={36} height={36} />
+                    <SchoolLogo size={36} />
                   </div>
                   <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', letterSpacing: '0.5px' }}>
-                    SHEZAD CHILDREN ACADEMY
+                    {schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY'}
                   </h4>
                   <span style={{ fontSize: '0.68rem', color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     STUDENT IDENTITY CARD

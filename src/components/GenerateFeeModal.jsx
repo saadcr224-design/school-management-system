@@ -27,6 +27,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
     generateFeeSlip, 
     generateBatchFeeSlips, 
     siblingDiscountRules = { sibling1: 0, sibling2: 25, sibling3: 50, sibling4Plus: 75 },
+    schoolProfile,
     showToast
   } = useApp();
 
@@ -597,8 +598,8 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
                         <div className="challan-header">
                           <SchoolLogo size={36} />
                           <div>
-                            <h3 className="challan-school-name">SHEZAD CHILDREN ACADEMY</h3>
-                            <p className="challan-school-sub">Affiliated with Secondary Education Board · Helpline: <strong>0313 9413450</strong></p>
+                            <h3 className="challan-school-name">{schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY'}</h3>
+                            <p className="challan-school-sub">{schoolProfile?.tagline || 'Schools & Colleges'} · Helpline: <strong>{schoolProfile?.helpline || schoolProfile?.phone || '0313 9413450'}</strong></p>
                           </div>
                           <span className="challan-copy-tag">{copyName}</span>
                         </div>

@@ -22,7 +22,7 @@ const CLASSES = [
 ];
 
 export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
-  const { feeSlips, deleteFeeSlip, campuses, allStudents, currentUser, showToast } = useApp();
+  const { feeSlips, deleteFeeSlip, campuses, allStudents, currentUser, schoolProfile, showToast } = useApp();
   const isSuperAdmin = currentUser?.role === 'Super Admin';
   const [activeSubTab, setActiveSubTab] = useState('challans'); // 'challans', 'paid', 'unpaid', 'reminders'
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -949,10 +949,10 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
               <div style={{ textAlign: 'center', borderBottom: '2px solid #0f1d38', paddingBottom: '12px', marginBottom: '16px' }}>
                 <SchoolLogo size={44} />
                 <h2 style={{ margin: '8px 0 2px', color: '#0f1d38', fontSize: '1.2rem', fontWeight: '800' }}>
-                  SHEZAD CHILDREN ACADEMY
+                  {schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY'}
                 </h2>
                 <div style={{ fontSize: '0.78rem', color: '#0369a1', fontWeight: '700' }}>
-                  Accounts & Finance Department — {reminderNoticeToPrint.campus} Campus · Helpline: 0313 9413450
+                  {schoolProfile?.tagline || 'Accounts & Finance Department'} — {reminderNoticeToPrint.campus} Campus · Helpline: <strong>{schoolProfile?.helpline || schoolProfile?.phone || '0313 9413450'}</strong>
                 </div>
               </div>
 
@@ -1037,7 +1037,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                 const amountPaid = slip.amountPaid || 0;
                 const remaining = Math.max(0, netPayable - amountPaid);
                 const student = allStudents.find(s => s.id === slip.studentId || s.rollNo === slip.rollNo);
-                const contactNumber = slip.phone || (student ? student.phone : '0300-1234567');
+                const contactNumber = slip.phone || (student ? student.phone : (schoolProfile?.phone || '0300-1234567'));
                 const fatherName = slip.fatherName || (student ? student.fatherName : 'Guardian');
 
                 return (
@@ -1054,9 +1054,9 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                               <SchoolLogo size={36} />
                               <div>
-                                <div className="challan-school-name">SHEZAD CHILDREN ACADEMY</div>
+                                <div className="challan-school-name">{schoolProfile?.name || 'SHEZAD CHILDREN ACADEMY'}</div>
                                 <div style={{ fontSize: '0.7rem', color: '#0369a1', fontWeight: '700' }}>
-                                  Schools & Colleges ({slip.campus} Campus) · Contact: <strong>0313 9413450</strong>
+                                  {schoolProfile?.tagline || 'Schools & Colleges'} ({slip.campus} Campus) · Contact: <strong>{schoolProfile?.helpline || schoolProfile?.phone || '0313 9413450'}</strong>
                                 </div>
                               </div>
                             </div>
@@ -1072,7 +1072,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                             <div><strong>Father Name:</strong> {fatherName}</div>
                             <div><strong>Roll No:</strong> {slip.rollNo}</div>
                             <div><strong>Class & Sec:</strong> {slip.classGrade} ({slip.section || 'A'})</div>
-                            <div><strong>Helpline #:</strong> <strong style={{ color: '#0369a1' }}>0313 9413450</strong></div>
+                            <div><strong>Helpline #:</strong> <strong style={{ color: '#0369a1' }}>{schoolProfile?.helpline || schoolProfile?.phone || '0313 9413450'}</strong></div>
                             <div style={{ gridColumn: 'span 2', color: '#0369a1', fontWeight: '700' }}>
                               Billing Month: {slip.month} · Student Cell: {contactNumber}
                             </div>

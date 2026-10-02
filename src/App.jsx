@@ -3,6 +3,8 @@ import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import StudentsView from './components/StudentsView';
+import SiblingPortalView from './components/SiblingPortalView';
+import SiblingFeeView from './components/SiblingFeeView';
 import FeeSlipsView from './components/FeeSlipsView';
 import StaffSalaryView from './components/StaffSalaryView';
 import AttendanceView from './components/AttendanceView';
@@ -55,6 +57,14 @@ function MainApp() {
                 onOpenFeeModal={() => setIsFeeModalOpen(true)}
                 onOpenPaymentModal={handleOpenPaymentModal}
               />
+            )}
+
+            {activeTab === 'siblings' && (
+              <SiblingPortalView />
+            )}
+
+            {activeTab === 'siblingfees' && (
+              <SiblingFeeView />
             )}
 
             {activeTab === 'feeslips' && (
