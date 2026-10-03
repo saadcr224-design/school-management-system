@@ -20,6 +20,10 @@ export function collectionPath(name, session) {
 export function createSessionStorage(storage, session) {
   return {
     getItem(key) {
+      if (key === 'peace_fee_slips') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        if (Object.hasOwn(records.__feeSlips || {}, session)) return JSON.stringify(records.__feeSlips[session]);
+      }
       if (key === 'peace_students') {
         const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
         if (Object.hasOwn(records, session)) return JSON.stringify(records[session]);
@@ -29,6 +33,13 @@ export function createSessionStorage(storage, session) {
       return value === null && session !== LEGACY_SESSION && SESSION_KEYS.includes(key) ? '[]' : value;
     },
     setItem(key, value) {
+      if (key === 'peace_fee_slips') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        if (Object.hasOwn(records.__feeSlips || {}, session)) {
+          storage.setItem(STUDENT_SESSION_STORE, JSON.stringify({ ...records, __feeSlips: { ...records.__feeSlips, [session]: JSON.parse(value) } }));
+          return;
+        }
+      }
       if (key === 'peace_students') {
         const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
         if (Object.hasOwn(records, session)) {
@@ -39,6 +50,13 @@ export function createSessionStorage(storage, session) {
       storage.setItem(storageKey(key, session), value);
     },
     removeItem(key) {
+      if (key === 'peace_fee_slips') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        if (records.__feeSlips) {
+          delete records.__feeSlips[session];
+          storage.setItem(STUDENT_SESSION_STORE, JSON.stringify(records));
+        }
+      }
       if (key === 'peace_students') {
         const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
         delete records[session];

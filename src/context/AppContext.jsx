@@ -17,7 +17,7 @@ import {
 import { ACTIVE_SESSION, LEGACY_SESSION, SESSION_START_YEAR, SESSION_END_YEAR, SESSION_LABEL, SESSION_KEYS,
   createSessionStorage, collectionPath, isSession, readSessions, rememberSessions, sessionDate } from '../services/academicSession';
 
-import { visibleStudents, planStudentTransfer, commitLocalStudentTransfer, readSessionStudents } from '../services/sessionTransfer';
+import { visibleStudents, planTransferWithDues, outstandingDues, belongsToStudent, commitLocalStudentTransfer, readSessionStudents, readSessionFeeSlips } from '../services/sessionTransfer';
 
 const localStorage = createSessionStorage(window.localStorage, ACTIVE_SESSION);
 const collection = (db, name) => firestoreCollection(db, ...collectionPath(name, ACTIVE_SESSION));
@@ -58,7 +58,7 @@ export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear =
   const endYear = startYear + 1;
 
   // Student specific slips
-  const studentSlips = (feeSlips || []).filter(s => s.studentId === student.id || s.rollNo === student.rollNo);
+  const studentSlips = (feeSlips || []).filter(s => !s.duesTransferredToSession && belongsToStudent(s, student));
 
   const monthsLedger = ACADEMIC_MONTHS.map((monthName) => {
     // April to December are in startYear, January to March are in endYear
@@ -68,7 +68,7 @@ export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear =
 
     // Find matching slips for this month
     const matchingSlips = studentSlips.filter(s => {
-      if (!s.month) return false;
+      if (!s.month || s.isSessionCarryForward) return false;
       const mStr = s.month.toLowerCase();
       const monthLower = monthName.toLowerCase();
       if (mStr.includes(monthLower)) {
@@ -177,6 +177,19 @@ export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear =
       };
     }
   });
+
+  // Opening dues are a separate row, not a replacement for the new April fee.
+  for (const slip of studentSlips.filter(s => s.isSessionCarryForward)) {
+    const totalAmount = Number(slip.totalAmount || 0), amountPaid = Number(slip.amountPaid || 0);
+    const remaining = Math.max(0, totalAmount - amountPaid);
+    monthsLedger.unshift({ month: 'Opening dues', year: startYear, fullMonthLabel: slip.month,
+      isGenerated: true, slipId: slip.id, slipIds: [slip.id], challanNo: slip.challanNo,
+      tuitionFee: 0, transportFee: 0, admissionFee: 0, examFee: 0, miscCharges: totalAmount,
+      miscDescription: slip.miscDescription, discount: 0, discountReason: '', subtotal: totalAmount,
+      totalAmount, amountPaid, remaining, status: remaining === 0 ? 'Paid' : amountPaid > 0 ? 'Partial' : 'Unpaid',
+      paidDate: slip.paidDate || '—', paymentMethod: slip.paymentMethod || '—',
+      paymentRemarks: slip.notes || '', slips: [slip] });
+  }
 
   const totals = {
     totalTuition: monthsLedger.reduce((sum, m) => sum + m.tuitionFee, 0),
@@ -1389,7 +1402,7 @@ export function AppProvider({ children }) {
   };
 
   // --- TWO-SYSTEM SYNCHRONIZATION & SOFTWARE UPDATE ENGINE ---
-  const [softwareVersion] = useState('v2.6.0');
+  const [softwareVersion] = useState('v2.7.0');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatusMessage, setUpdateStatusMessage] = useState('');
@@ -1790,60 +1803,83 @@ export function AppProvider({ children }) {
     return id;
   };
 
-  const convertStudentsToSession = async (ids, targetSession) => {
+  const convertStudentsToSession = async (ids, targetSession, expectedDues) => {
     if (!isAuthenticated || !hasPermission('students')) throw new Error('Your account needs Students access.');
     if (!sessions.includes(targetSession) || targetSession === ACTIVE_SESSION) throw new Error('Create and select a different destination session.');
     if (!ids.length || ids.length > 100) throw new Error('Select between 1 and 100 students.');
+    const transferId = crypto.randomUUID();
+    const verifyPreview = plan => {
+      if (expectedDues !== undefined && Math.abs(plan.totalDues - expectedDues) > 0.005) throw new Error('The outstanding dues changed. Refresh the students list and review the new amount before moving.');
+      return plan;
+    };
     const execute = async () => {
       const db = getFirestoreDb();
       let plan;
       if (db) {
         const pending = await Promise.allSettled([...pendingWrites]);
         if (pending.some(r => r.status === 'rejected')) throw new Error('Save pending changes before moving students.');
-        const destinationSnapshot = await getDocs(firestoreCollection(db, ...collectionPath('students', targetSession)));
+        const [destinationSnapshot, sourceFeesSnapshot, targetFeesSnapshot] = await Promise.all([
+          getDocs(firestoreCollection(db, ...collectionPath('students', targetSession))),
+          getDocs(collection(db, 'feeSlips')),
+          getDocs(firestoreCollection(db, ...collectionPath('feeSlips', targetSession)))
+        ]);
         const destination = destinationSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-        // All source/destination reads precede writes; any denial/conflict leaves both unchanged.
+        const selectedStudents = students.filter(s => ids.includes(s.id));
+        const affectedFees = sourceFeesSnapshot.docs.filter(d => selectedStudents.some(s => belongsToStudent(d.data(), s)));
+        const destinationFees = targetFeesSnapshot.docs.filter(d => selectedStudents.some(s => belongsToStudent(d.data(), s)));
+        if (ids.length * 3 + affectedFees.length > 450) throw new Error('Too many fee records for one transfer. Select fewer students.');
         plan = await runTransaction(db, async transaction => {
-          const sources = []; const targets = [];
+          const sources = [], targets = [], freshFees = [], freshTargetFees = [];
           for (const id of [...new Set(ids)]) {
             sources.push(await transaction.get(firestoreDoc(db, ...collectionPath('students', ACTIVE_SESSION), id)));
             targets.push(await transaction.get(firestoreDoc(db, ...collectionPath('students', targetSession), id)));
+          }
+          for (const snapshot of affectedFees) {
+            const fresh = await transaction.get(snapshot.ref);
+            if (fresh.exists()) freshFees.push({ ...fresh.data(), id: fresh.id });
+          }
+          for (const snapshot of destinationFees) {
+            const fresh = await transaction.get(snapshot.ref);
+            if (fresh.exists()) freshTargetFees.push({ ...fresh.data(), id: fresh.id });
           }
           const freshSource = students.filter(s => !ids.includes(s.id));
           for (const snap of sources) if (snap.exists()) freshSource.push({ ...snap.data(), id: snap.id });
           const freshDestination = destination.filter(s => !ids.includes(s.id));
           for (const snap of targets) if (snap.exists()) freshDestination.push({ ...snap.data(), id: snap.id });
-          const result = planStudentTransfer(freshSource, freshDestination, ids, ACTIVE_SESSION, targetSession);
+          const sourceFees = sourceFeesSnapshot.docs.filter(d => !affectedFees.some(f => f.id === d.id)).map(d => ({ ...d.data(), id: d.id })).concat(freshFees);
+          const targetFees = targetFeesSnapshot.docs.filter(d => !destinationFees.some(f => f.id === d.id)).map(d => ({ ...d.data(), id: d.id })).concat(freshTargetFees);
+          const result = verifyPreview(planTransferWithDues(freshSource, freshDestination, sourceFees, targetFees, ids, ACTIVE_SESSION, targetSession, transferId));
           for (const student of result.moved) {
             transaction.set(firestoreDoc(db, ...collectionPath('students', targetSession), student.id), student);
-            transaction.update(firestoreDoc(db, ...collectionPath('students', ACTIVE_SESSION), student.id), {
-              movedToSession: targetSession, transferredAt: student.transferredAt
-            });
+            transaction.update(firestoreDoc(db, ...collectionPath('students', ACTIVE_SESSION), student.id), { movedToSession: targetSession, transferredAt: student.transferredAt });
           }
+          for (const id of result.transferredSlipIds) transaction.update(doc(db, 'feeSlips', id), {
+            duesTransferredToSession: targetSession, duesTransferId: transferId, duesTransferredAt: result.moved[0].transferredAt
+          });
+          for (const slip of result.carriedSlips) transaction.set(firestoreDoc(db, ...collectionPath('feeSlips', targetSession), slip.id), slip);
           return result;
         });
       } else {
         const savedSource = readSessionStudents(window.localStorage, ACTIVE_SESSION);
         const source = savedSource.length ? savedSource : students;
-        plan = planStudentTransfer(source, readSessionStudents(window.localStorage, targetSession), ids, ACTIVE_SESSION, targetSession);
+        const savedFees = readSessionFeeSlips(window.localStorage, ACTIVE_SESSION);
+        plan = verifyPreview(planTransferWithDues(source, readSessionStudents(window.localStorage, targetSession),
+          savedFees.length ? savedFees : feeSlips, readSessionFeeSlips(window.localStorage, targetSession), ids, ACTIVE_SESSION, targetSession, transferId));
       }
-      // Cloud transactions are already durable; a cache error must not report a failed move.
       try { commitLocalStudentTransfer(window.localStorage, ACTIVE_SESSION, targetSession, plan); }
       catch (err) { if (!db) throw err; console.warn('Transfer saved to cloud; local cache unavailable:', err); }
-      setStudents(plan.source);
-      showToast(`${plan.moved.length} student(s) moved to ${targetSession}.`, 'success');
+      setStudents(plan.source); setFeeSlips(plan.sourceFeeSlips);
+      showToast(`${plan.moved.length} student(s) and Rs ${plan.totalDues.toLocaleString()} dues moved to ${targetSession}.`, 'success');
       return plan.moved.length;
     };
-    return window.navigator?.locks
-      ? window.navigator.locks.request('sca-student-session-transfer', execute)
-      : execute();
+    return window.navigator?.locks ? window.navigator.locks.request('sca-student-session-transfer', execute) : execute();
   };
 
   // Refresh this tab after another tab completes a local move.
   useEffect(() => {
     const refresh = event => {
       if (event.key === 'sca_student_session_records') {
-        try { setStudents(readSessionStudents(window.localStorage, ACTIVE_SESSION)); }
+        try { setStudents(readSessionStudents(window.localStorage, ACTIVE_SESSION)); setFeeSlips(readSessionFeeSlips(window.localStorage, ACTIVE_SESSION)); }
         catch (error) { console.warn('Session roster reload failed:', error); }
       }
     };
@@ -1861,9 +1897,12 @@ export function AppProvider({ children }) {
     ? staff
     : staff.filter(s => s.campus === selectedCampus);
 
+  const sessionFeeSlips = feeSlips.filter(s => !s.duesTransferredToSession);
   const filteredFeeSlips = selectedCampus === 'ALL'
-    ? feeSlips
-    : feeSlips.filter(s => s.campus === selectedCampus);
+    ? sessionFeeSlips
+    : sessionFeeSlips.filter(s => s.campus === selectedCampus);
+
+  const historicalCollectionSlips = selectedCampus === 'ALL' ? feeSlips : feeSlips.filter(s => s.campus === selectedCampus);
 
   // Dynamic Calculations for KPIs
   const activeStudentsCount = filteredStudents.filter(s => s.status === 'Active').length;
@@ -1873,22 +1912,22 @@ export function AppProvider({ children }) {
   const newAdmissionsCount = filteredStudents.filter(s => s.admissionDate && s.admissionDate.startsWith(currentMonthPrefix)).length;
 
   // Fee collected total
-  const feeCollected = filteredFeeSlips.reduce((acc, slip) => acc + (slip.amountPaid || 0), 0);
+  const feeCollected = historicalCollectionSlips.reduce((acc, slip) => acc + (slip.amountPaid || 0), 0);
 
   // Today's fee collection
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayCollection = filteredFeeSlips.reduce((acc, slip) => {
+  const todayCollection = historicalCollectionSlips.reduce((acc, slip) => {
     return slip.paidDate === todayStr ? acc + (slip.amountPaid || 0) : acc;
   }, 0);
 
   // Current month fee collection
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
-  const monthlyCollection = filteredFeeSlips
+  const monthlyCollection = historicalCollectionSlips
     .filter(slip => slip.month && slip.month.includes(currentMonthName))
     .reduce((acc, slip) => acc + (slip.amountPaid || 0), 0);
 
   // Transport fee collected
-  const transportCollection = filteredFeeSlips.reduce((acc, slip) => {
+  const transportCollection = historicalCollectionSlips.reduce((acc, slip) => {
     if (slip.status === 'Paid') return acc + (slip.transportFee || 0);
     if (slip.status === 'Partial' && slip.totalAmount > 0) {
       const ratio = (slip.amountPaid || 0) / slip.totalAmount;
@@ -1898,10 +1937,10 @@ export function AppProvider({ children }) {
   }, 0);
 
   // Total discounts given
-  const totalDiscounts = filteredFeeSlips.reduce((acc, slip) => acc + (slip.discount || 0), 0);
+  const totalDiscounts = historicalCollectionSlips.reduce((acc, slip) => acc + (slip.discount || 0), 0);
 
   // Admission fee collected
-  const admissionCollection = filteredFeeSlips.reduce((acc, slip) => {
+  const admissionCollection = historicalCollectionSlips.reduce((acc, slip) => {
     if (slip.status === 'Paid') return acc + (slip.admissionFee || 0);
     if (slip.status === 'Partial' && slip.totalAmount > 0) {
       const ratio = (slip.amountPaid || 0) / slip.totalAmount;
@@ -1911,7 +1950,7 @@ export function AppProvider({ children }) {
   }, 0);
 
   // Miscellaneous charges collected
-  const miscCollection = filteredFeeSlips.reduce((acc, slip) => {
+  const miscCollection = historicalCollectionSlips.reduce((acc, slip) => {
     if (slip.status === 'Paid') return acc + (slip.miscCharges || 0);
     if (slip.status === 'Partial' && slip.totalAmount > 0) {
       const ratio = (slip.amountPaid || 0) / slip.totalAmount;
@@ -2145,89 +2184,31 @@ export function AppProvider({ children }) {
   // Pay Fee Slip with Instant Recalculation, Partial Payment History & Multi-System Sync
   const payFeeSlip = (slipId, amountPaid, paymentMethod = 'Cash at Counter', remarks = '', paymentDate = null, receiptNo = '') => {
     const collectedAmount = Number(amountPaid) || 0;
-    if (collectedAmount <= 0) return;
-
+    const existing = feeSlips.find(s => s.id === slipId && !s.duesTransferredToSession);
+    if (!existing || collectedAmount <= 0) return false;
+    const remaining = Math.max(0, Number(existing.totalAmount || 0) - Number(existing.amountPaid || 0));
+    if (collectedAmount > remaining) { showToast('Payment exceeds the outstanding dues.', 'danger'); return false; }
     const payDate = paymentDate || new Date().toISOString().split('T')[0];
-    const rcp = receiptNo || ('RCP-' + Math.floor(1000 + Math.random() * 9000));
-
-    let targetSlip = null;
-    let updatedFeeSlips = [];
-
-    setFeeSlips(prev => {
-      updatedFeeSlips = prev.map(slip => {
-        if (slip.id === slipId) {
-          const currentPaid = Number(slip.amountPaid || 0);
-          const totalAmt = Number(slip.totalAmount || 0);
-          const newPaid = currentPaid + collectedAmount;
-          const newStatus = newPaid >= totalAmt ? 'Paid' : (newPaid > 0 ? 'Partial' : 'Unpaid');
-          const existingHistory = Array.isArray(slip.paymentHistory) ? slip.paymentHistory : [];
-          
-          targetSlip = {
-            ...slip,
-            amountPaid: newPaid,
-            status: newStatus,
-            paymentMethod,
-            paymentRemarks: remarks,
-            paidDate: payDate,
-            receiptNo: rcp,
-            paymentHistory: [
-              ...existingHistory,
-              {
-                date: payDate,
-                amount: collectedAmount,
-                method: paymentMethod,
-                receiptNo: rcp,
-                remarks: remarks,
-                recordedAt: new Date().toISOString()
-              }
-            ]
-          };
-          return targetSlip;
-        }
-        return slip;
-      });
-      return updatedFeeSlips;
-    });
-
-    // Recalculate remaining student balance immediately and persist
-    if (targetSlip) {
-      let updatedStudent = null;
-      setStudents(prev => prev.map(std => {
-        if (std.id === targetSlip.studentId || std.rollNo === targetSlip.rollNo) {
-          const stdSlips = updatedFeeSlips.filter(s => s.studentId === std.id || s.rollNo === std.rollNo);
-          const totalBilled = stdSlips.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
-          const totalPaid = stdSlips.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0);
-          const newBalance = Math.max(0, totalBilled - totalPaid);
-          updatedStudent = {
-            ...std,
-            balance: newBalance,
-            totalBilled,
-            totalPaid
-          };
-          return updatedStudent;
-        }
-        return std;
-      }));
-
-      // Post to General Ledger automatically
-      const ledgerEntry = {
-        date: payDate,
-        description: `Fee Collection: ${targetSlip.studentName} (${targetSlip.rollNo}) - ${targetSlip.month} [${rcp}]`,
-        category: 'Fee Collection',
-        campus: targetSlip.campus,
-        type: 'Credit',
-        amount: collectedAmount
-      };
-      addLedgerEntry(ledgerEntry);
-
-      // Persist fee slip and updated student to Firestore
-      syncDocToFirestore('feeSlips', targetSlip.id, targetSlip);
-      if (updatedStudent) {
-        syncDocToFirestore('students', updatedStudent.id, updatedStudent);
-      }
-
-      showToast(`✓ Payment of Rs ${collectedAmount.toLocaleString()} collected for ${targetSlip.studentName}`, 'success');
+    const rcp = receiptNo || ('RCP-' + crypto.randomUUID().slice(0, 8));
+    const paid = Number(existing.amountPaid || 0) + collectedAmount;
+    const targetSlip = { ...existing, amountPaid: paid, status: paid >= Number(existing.totalAmount) ? 'Paid' : 'Partial',
+      paymentMethod, paymentRemarks: remarks, paidDate: payDate, receiptNo: rcp,
+      paymentHistory: [...(existing.paymentHistory || []), { date: payDate, amount: collectedAmount, method: paymentMethod, receiptNo: rcp, remarks, recordedAt: new Date().toISOString() }] };
+    const updatedFeeSlips = feeSlips.map(s => s.id === slipId ? targetSlip : s);
+    setFeeSlips(updatedFeeSlips);
+    const student = students.find(s => belongsToStudent(targetSlip, s));
+    if (student) {
+      const slips = updatedFeeSlips.filter(s => !s.duesTransferredToSession && belongsToStudent(s, student));
+      const totalBilled = slips.reduce((sum,s) => sum + Number(s.totalAmount || 0), 0);
+      const totalPaid = slips.reduce((sum,s) => sum + Number(s.amountPaid || 0), 0);
+      const updatedStudent = { ...student, balance: Math.max(0,totalBilled - totalPaid), totalBilled, totalPaid };
+      setStudents(previous => previous.map(s => s.id === student.id ? updatedStudent : s));
+      syncDocToFirestore('students', student.id, updatedStudent);
     }
+    addLedgerEntry({ date: payDate, description: `Fee Collection: ${targetSlip.studentName} (${targetSlip.rollNo}) - ${targetSlip.month} [${rcp}]`, category: 'Fee Collection', campus: targetSlip.campus, type: 'Credit', amount: collectedAmount });
+    syncDocToFirestore('feeSlips', targetSlip.id, targetSlip);
+    showToast(`Payment of Rs ${collectedAmount.toLocaleString()} collected for ${targetSlip.studentName}`, 'success');
+    return true;
   };
 
   // Update existing fee slip (recalculates totals and student balances)
@@ -2277,7 +2258,7 @@ export function AppProvider({ children }) {
       // Recalculate student balance
       setStudents(prev => prev.map(std => {
         if (std.id === targetSlip.studentId || std.rollNo === targetSlip.rollNo) {
-          const stdSlips = updatedFeeSlips.filter(s => s.studentId === std.id || s.rollNo === std.rollNo);
+          const stdSlips = updatedFeeSlips.filter(s => !s.duesTransferredToSession && belongsToStudent(s, std));
           const totalBilled = stdSlips.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
           const totalPaid = stdSlips.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0);
           const newBalance = Math.max(0, totalBilled - totalPaid);
@@ -2305,7 +2286,7 @@ export function AppProvider({ children }) {
     if (target) {
       setStudents(prev => prev.map(std => {
         if (std.id === target.studentId || std.rollNo === target.rollNo) {
-          const stdSlips = updatedFeeSlips.filter(s => s.studentId === std.id || s.rollNo === std.rollNo);
+          const stdSlips = updatedFeeSlips.filter(s => !s.duesTransferredToSession && belongsToStudent(s, std));
           const totalBilled = stdSlips.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0);
           const totalPaid = stdSlips.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0);
           const newBalance = Math.max(0, totalBilled - totalPaid);
@@ -2594,7 +2575,7 @@ export function AppProvider({ children }) {
       deleteStaff,
       paySalary,
       feeSlips: filteredFeeSlips,
-      allFeeSlips: feeSlips,
+      allFeeSlips: sessionFeeSlips,
       generateFeeSlip,
       generateBatchFeeSlips,
       payFeeSlip,
