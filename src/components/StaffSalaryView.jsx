@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
@@ -10,7 +11,7 @@ export default function StaffSalaryView() {
   
   // Pay Salary Modal State
   const [payingStaff, setPayingStaff] = useState(null);
-  const [salaryMonth, setSalaryMonth] = useState('March 2026');
+  const [salaryMonth, setSalaryMonth] = useState(`April ${SESSION_START_YEAR}`);
   const [paymentMode, setPaymentMode] = useState('Direct Bank Transfer');
   const [deductions, setDeductions] = useState(0);
   const [bonus, setBonus] = useState(0);
@@ -27,7 +28,7 @@ export default function StaffSalaryView() {
     salary: 45000,
     phone: '',
     email: '',
-    joinDate: '2026-01-01'
+    joinDate: `${SESSION_START_YEAR}-04-01`
   });
 
   const filteredStaff = staff.filter(st => {
@@ -75,7 +76,7 @@ export default function StaffSalaryView() {
       salary: 45000,
       phone: '',
       email: '',
-      joinDate: '2026-01-01'
+      joinDate: `${SESSION_START_YEAR}-04-01`
     });
   };
 
@@ -573,3 +574,4 @@ export default function StaffSalaryView() {
     </div>
   );
 }
+

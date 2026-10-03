@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState, useMemo } from 'react';
 import { useApp, getStudentYearlyFeeLedger } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -600,7 +601,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                     💰 Complete Student Fee Structure & Yearly Ledger
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-                    {activeFeeStructureStudent.name} ({activeFeeStructureStudent.rollNo}) — {activeFeeStructureStudent.campus} Campus · Session 2026–2027 (April → March)
+                    {activeFeeStructureStudent.name} ({activeFeeStructureStudent.rollNo}) — {activeFeeStructureStudent.campus} Campus · Session {SESSION_LABEL} (April → March)
                   </p>
                 </div>
                 <button className="modal-close-btn" style={{ color: '#fff' }} onClick={() => setActiveFeeStructureStudent(null)}>✕</button>
@@ -641,7 +642,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                     <div><strong>Father / Guardian:</strong> {activeFeeStructureStudent.fatherName}</div>
                     <div><strong>Class & Section:</strong> {activeFeeStructureStudent.classGrade} ({activeFeeStructureStudent.section || 'A'})</div>
                     <div><strong>Contact Phone:</strong> {activeFeeStructureStudent.phone}</div>
-                    <div><strong>Admission Date:</strong> {activeFeeStructureStudent.admissionDate || '2026-01-15'}</div>
+                    <div><strong>Admission Date:</strong> {activeFeeStructureStudent.admissionDate || `${SESSION_START_YEAR}-04-01`}</div>
                     <div><strong>Initial Admission Fee:</strong> Rs {(activeFeeStructureStudent.admissionFee || 5000).toLocaleString()}</div>
                     <div>
                       <strong>Fee Payment Status:</strong>{' '}
@@ -656,7 +657,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
                 {/* Complete 12-Month Academic Year Financial Ledger */}
                 <h4 style={{ margin: '0 0 10px', fontSize: '0.94rem', color: '#0f1d38', fontWeight: '800' }}>
-                  📜 Full Academic Year Ledger (April 2026 → March 2027)
+                  📜 Full Academic Year Ledger (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})
                 </h4>
                 <div className="table-responsive" style={{ marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
                   <table className="custom-table" style={{ fontSize: '0.82rem', margin: 0 }}>
@@ -807,7 +808,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                           classGrade: st.classGrade,
                           section: st.section,
                           campus: st.campus,
-                          month: firstUnpaid ? firstUnpaid.fullMonthLabel : 'April 2026',
+                          month: firstUnpaid ? firstUnpaid.fullMonthLabel : `April ${SESSION_START_YEAR}`,
                           totalAmount: outstandingBalance > 0 ? outstandingBalance : ((st.monthlyFee || 4500) + (st.transportFee || 0)),
                           phone: st.phone
                         });
@@ -1109,3 +1110,4 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
     </div>
   );
 }
+

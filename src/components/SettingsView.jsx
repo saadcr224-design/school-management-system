@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import SessionSelector from './SessionSelector';
 import SchoolLogo from './SchoolLogo';
 
 export default function SettingsView() {
@@ -861,15 +862,7 @@ export default function SettingsView() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Active Academic Session</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                defaultValue="Academic Session 2026–2027 (April 2026 to March 2027)" 
-                readOnly
-              />
-            </div>
+            <SessionSelector allowCreate />
 
             <div className="form-group">
               <label className="form-label">Default Currency</label>
@@ -975,3 +968,4 @@ export default function SettingsView() {
     </div>
   );
 }
+

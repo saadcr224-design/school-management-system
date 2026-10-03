@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import SessionSelector from './SessionSelector';
 import SchoolLogo from './SchoolLogo';
 
 export default function Sidebar() {
@@ -156,6 +157,7 @@ export default function Sidebar() {
         </div>
       </div>
 
+      <SessionSelector />
       <nav className="sidebar-nav">
         {navItems
           .filter((item) => hasPermission ? hasPermission(item.id) : true)
@@ -224,3 +226,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

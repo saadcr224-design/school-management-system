@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState, useMemo } from 'react';
 import { useApp, getStudentYearlyFeeLedger } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -69,7 +70,7 @@ export default function StudentDetailsModal({
   };
 
   const handleWhatsAppClick = () => {
-    const msg = `*STUDENT FINANCIAL LEDGER & ACADEMIC NOTICE*\nDear Parent of ${student.name} (Roll #${student.rollNo}, Class ${student.classGrade}),\nCampus: ${student.campus}\nSession: 2026–2027 (April–March)\nTotal Annual Fee: Rs. ${totalBilled.toLocaleString()}\nTotal Paid: Rs. ${totalPaid.toLocaleString()}\nRemaining Balance: Rs. ${outstanding.toLocaleString()}.\nStatus: ${isFeePaid ? 'Cleared (Paid in Full)' : `Outstanding Arrears of Rs. ${outstanding.toLocaleString()}`}.\n\n_Shezad Children Academy Administration_`;
+    const msg = `*STUDENT FINANCIAL LEDGER & ACADEMIC NOTICE*\nDear Parent of ${student.name} (Roll #${student.rollNo}, Class ${student.classGrade}),\nCampus: ${student.campus}\nSession: ${SESSION_LABEL} (April–March)\nTotal Annual Fee: Rs. ${totalBilled.toLocaleString()}\nTotal Paid: Rs. ${totalPaid.toLocaleString()}\nRemaining Balance: Rs. ${outstanding.toLocaleString()}.\nStatus: ${isFeePaid ? 'Cleared (Paid in Full)' : `Outstanding Arrears of Rs. ${outstanding.toLocaleString()}`}.\n\n_Shezad Children Academy Administration_`;
     navigator.clipboard.writeText(msg);
     showToast(`✓ Student financial statement copied to clipboard!`, 'success');
   };
@@ -107,7 +108,7 @@ export default function StudentDetailsModal({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Yearly_Ledger_${student.rollNo}_${student.name.replace(/\s+/g, '_')}_2026_2027.csv`);
+    link.setAttribute('download', `Yearly_Ledger_${student.rollNo}_${student.name.replace(/\s+/g, '_')}_${SESSION_START_YEAR}_${SESSION_END_YEAR}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -165,7 +166,7 @@ export default function StudentDetailsModal({
               <div style={{ fontSize: '0.86rem', color: '#cbd5e1', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                 <span>Father: <strong>{student.fatherName || 'N/A'}</strong></span>
                 <span>Phone: <strong style={{ color: '#38bdf8' }}>{student.phone || 'N/A'}</strong></span>
-                <span>Admission: <strong>{student.admissionDate || '2026-04-01'}</strong></span>
+                <span>Admission: <strong>{student.admissionDate || `${SESSION_START_YEAR}-04-01`}</strong></span>
               </div>
             </div>
 
@@ -388,7 +389,7 @@ export default function StudentDetailsModal({
 
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '0.76rem', fontWeight: '700' }}>ADMISSION DATE</span>
-                    <strong style={{ color: '#0f1d38' }}>{student.admissionDate || '2026-04-01'}</strong>
+                    <strong style={{ color: '#0f1d38' }}>{student.admissionDate || `${SESSION_START_YEAR}-04-01`}</strong>
                   </div>
 
                   <div style={{ gridColumn: 'span 2' }}>
@@ -469,7 +470,7 @@ export default function StudentDetailsModal({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.02rem', color: '#0f1d38', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📜 Full Academic Year Financial Ledger (April 2026 → March 2027)
+                    📜 Full Academic Year Financial Ledger (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})
                   </h4>
                   <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
                     Complete 12-month schedule showing Monthly Fee &rarr; Paid &rarr; Remaining. Unpaid months are permanently tracked.
@@ -693,7 +694,7 @@ export default function StudentDetailsModal({
                 </div>
 
                 <div style={{ background: '#f1f5f9', padding: '8px', textAlign: 'center', fontSize: '0.68rem', color: '#64748b', borderTop: '1px solid #e2e8f0' }}>
-                  Authorized Signatory · Session 2026–2027
+                  Authorized Signatory · Session {SESSION_LABEL}
                 </div>
               </div>
 
@@ -723,3 +724,4 @@ export default function StudentDetailsModal({
     </div>
   );
 }
+

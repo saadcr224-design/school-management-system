@@ -1,3 +1,5 @@
+import { sessionDate } from '../services/academicSession';
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState, useMemo } from 'react';
 import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -18,7 +20,7 @@ export default function SiblingFeeView() {
 
   // Academic Month & Year Selector (April - March)
   const [selectedMonth, setSelectedMonth] = useState('April');
-  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedYear, setSelectedYear] = useState(SESSION_START_YEAR);
   const fullMonthLabel = useMemo(() => getAcademicMonthYear(selectedMonth, selectedYear), [selectedMonth, selectedYear]);
 
   // Filters
@@ -177,7 +179,7 @@ export default function SiblingFeeView() {
         generateFamilyFeeSlips({
           familyId: fam.id,
           month: fullMonthLabel,
-          dueDate: `${selectedYear}-${selectedMonth === 'April' ? '04' : '05'}-15`
+          dueDate: sessionDate(selectedMonth)
         });
         count++;
       }
@@ -349,8 +351,7 @@ export default function SiblingFeeView() {
                 onChange={(e) => setSelectedYear(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f1d38', padding: '4px' }}
               >
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
+                <option value={SESSION_START_YEAR}>{SESSION_START_YEAR}–{SESSION_END_YEAR}</option>
               </select>
             </div>
 
@@ -714,7 +715,7 @@ export default function SiblingFeeView() {
                         <div><strong>Family Code:</strong> {familyToPrintChallan.familyCode}</div>
                         <div><strong>Billing Month:</strong> {fullMonthLabel}</div>
                         <div><strong>Father Name:</strong> {familyToPrintChallan.fatherName}</div>
-                        <div><strong style={{ color: '#dc2626' }}>Due Date:</strong> 15-{selectedMonth === 'April' ? '04' : '05'}-{selectedYear}</div>
+                        <div><strong style={{ color: '#dc2626' }}>Due Date:</strong> {sessionDate(selectedMonth)}</div>
                         <div><strong>Father Cell:</strong> {familyToPrintChallan.phone}</div>
                         <div><strong>Siblings Count:</strong> {familyToPrintChallan.childCount} Children</div>
                       </div>
@@ -784,3 +785,4 @@ export default function SiblingFeeView() {
     </div>
   );
 }
+

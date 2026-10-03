@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -1066,7 +1067,7 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
                           {/* Student & Challan Meta */}
                           <div className="challan-meta-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 10px', fontSize: '0.78rem', marginBottom: '8px', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                             <div><strong>Challan #:</strong> {slip.challanNo}</div>
-                            <div><strong>Issue Date:</strong> {slip.issueDate || '2026-04-01'}</div>
+                            <div><strong>Issue Date:</strong> {slip.issueDate || `${SESSION_START_YEAR}-04-01`}</div>
                             <div><strong>Student Name:</strong> {slip.studentName}</div>
                             <div><strong style={{ color: '#dc2626' }}>Due Date:</strong> {slip.dueDate}</div>
                             <div><strong>Father Name:</strong> {fatherName}</div>
@@ -1194,3 +1195,4 @@ export default function FeeSlipsView({ onOpenFeeModal, onOpenPaymentModal }) {
     </div>
   );
 }
+

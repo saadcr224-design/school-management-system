@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear } from '../context/AppContext';
 
@@ -82,7 +83,7 @@ export default function DashboardView({ onOpenAdmissionModal, onOpenFeeModal, on
       <div className="page-title-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title">Executive Dashboard</h1>
-          <p className="page-subtitle">Academic Session 2026–2027 · April to March Financial Cycle · Shezad Children Academy</p>
+          <p className="page-subtitle">Academic Session {SESSION_LABEL} · April to March Financial Cycle · Shezad Children Academy</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {onOpenPaymentModal && (
@@ -251,7 +252,7 @@ export default function DashboardView({ onOpenAdmissionModal, onOpenFeeModal, on
       <div className="section-card" style={{ marginBottom: '24px' }}>
         <div className="section-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 className="chart-title">📊 Academic Financial Year Performance (April 2026 → March 2027)</h3>
+            <h3 className="chart-title">📊 Academic Financial Year Performance (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})</h3>
             <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
               Complete 12-month sequence tracking fee billing, collections, outstanding dues, and concessions
             </p>
@@ -372,8 +373,8 @@ export default function DashboardView({ onOpenAdmissionModal, onOpenFeeModal, on
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.78rem', color: '#64748b' }}>
-          <span>Academic Cycle Start: <strong>April 2026</strong></span>
-          <span>Cycle End: <strong>March 2027</strong></span>
+          <span>Academic Cycle Start: <strong>April {SESSION_START_YEAR}</strong></span>
+          <span>Cycle End: <strong>March {SESSION_END_YEAR}</strong></span>
         </div>
       </div>
 
@@ -440,3 +441,4 @@ export default function DashboardView({ onOpenAdmissionModal, onOpenFeeModal, on
     </div>
   );
 }
+
