@@ -1,5 +1,6 @@
 // The session is fixed for this page lifetime. Switching reloads the app, so
 // open forms, asynchronous writes and subscriptions cannot drift into another year.
+export const STUDENT_SESSION_STORE = 'sca_student_session_records';
 export const LEGACY_SESSION = '2026-2027';
 export const SESSION_KEYS = ['peace_students', 'peace_staff', 'peace_fee_slips', 'peace_ledger', 'peace_attendance', 'peace_families'];
 export function isSession(value) {
@@ -19,12 +20,32 @@ export function collectionPath(name, session) {
 export function createSessionStorage(storage, session) {
   return {
     getItem(key) {
+      if (key === 'peace_students') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        if (Object.hasOwn(records, session)) return JSON.stringify(records[session]);
+      }
       const value = storage.getItem(storageKey(key, session));
       // Never populate a new year with the old sample students or transactions.
       return value === null && session !== LEGACY_SESSION && SESSION_KEYS.includes(key) ? '[]' : value;
     },
-    setItem(key, value) { storage.setItem(storageKey(key, session), value); },
-    removeItem(key) { storage.removeItem(storageKey(key, session)); },
+    setItem(key, value) {
+      if (key === 'peace_students') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        if (Object.hasOwn(records, session)) {
+          storage.setItem(STUDENT_SESSION_STORE, JSON.stringify({ ...records, [session]: JSON.parse(value) }));
+          return;
+        }
+      }
+      storage.setItem(storageKey(key, session), value);
+    },
+    removeItem(key) {
+      if (key === 'peace_students') {
+        const records = JSON.parse(storage.getItem(STUDENT_SESSION_STORE) || '{}');
+        delete records[session];
+        storage.setItem(STUDENT_SESSION_STORE, JSON.stringify(records));
+      }
+      storage.removeItem(storageKey(key, session));
+    },
   };
 }
 let selected = LEGACY_SESSION;

@@ -1,11 +1,13 @@
 import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState, useMemo } from 'react';
 import { useApp, getStudentYearlyFeeLedger } from '../context/AppContext';
+import ConvertSessionModal from './ConvertSessionModal';
 import SchoolLogo from './SchoolLogo';
 import StudentDetailsModal from './StudentDetailsModal';
 
 export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onOpenPaymentModal }) {
   const { students, campuses, deleteStudent, updateStudent, updateStudentFeeStructure, feeSlips, currentUser, showToast } = useApp();
+  const [convertOpen, setConvertOpen] = useState(false);
   const isSuperAdmin = currentUser?.role === 'Super Admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCampusFilter, setSelectedCampusFilter] = useState('ALL');
@@ -179,6 +181,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
               <span><strong>💳 Pay Student Fee</strong></span>
             </button>
           )}
+          <button className="action-btn-secondary" onClick={() => setConvertOpen(true)}>Convert to Session</button>
           <button 
             className="action-btn-secondary"
             onClick={handleExportStudentsCSV}
@@ -347,6 +350,8 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
           </div>
         </div>
       </div>
+
+      {convertOpen && <ConvertSessionModal students={filtered} onClose={() => setConvertOpen(false)} />}
 
       {/* Students Data Table */}
       <div className="section-card">

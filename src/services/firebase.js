@@ -1,7 +1,8 @@
 // Firebase Service & Synchronization Layer
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore, 
+  getFirestore,
+  runTransaction, 
   collection, 
   getDocs, 
   doc, 
@@ -102,6 +103,7 @@ export function initFirebase(customConfig = null) {
 export const firebaseStatus = initFirebase();
 
 export { 
+  runTransaction,
   db, 
   auth, 
   collection, 
@@ -115,3 +117,4 @@ export {
   where,
   onSnapshot
 };
+
