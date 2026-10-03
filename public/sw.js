@@ -1,5 +1,5 @@
 // Service Worker for Shezad Children Academy Desktop & Mobile App
-const CACHE_NAME = 'shezad-academy-v2.5-sessions';
+const CACHE_NAME = 'shezad-academy-v2.6-session-transfer';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

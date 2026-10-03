@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { 
+  runTransaction,
   initFirebase, 
   saveFirebaseConfig, 
   clearFirebaseConfig, 
@@ -15,6 +16,8 @@ import {
 
 import { ACTIVE_SESSION, LEGACY_SESSION, SESSION_START_YEAR, SESSION_END_YEAR, SESSION_LABEL, SESSION_KEYS,
   createSessionStorage, collectionPath, isSession, readSessions, rememberSessions, sessionDate } from '../services/academicSession';
+
+import { visibleStudents, planStudentTransfer, commitLocalStudentTransfer, readSessionStudents } from '../services/sessionTransfer';
 
 const localStorage = createSessionStorage(window.localStorage, ACTIVE_SESSION);
 const collection = (db, name) => firestoreCollection(db, ...collectionPath(name, ACTIVE_SESSION));
@@ -1006,7 +1009,7 @@ export function AppProvider({ children }) {
     const family = families.find(f => f.id === familyId);
     if (!family) return { success: false, error: 'Family not found' };
 
-    const famStudents = students.filter(s => s.familyId === familyId || (family.studentIds && family.studentIds.includes(s.id)));
+    const famStudents = students.filter(s => !s.movedToSession && (s.familyId === familyId || (family.studentIds && family.studentIds.includes(s.id))));
     if (famStudents.length === 0) return { success: false, error: 'No students found in this family' };
 
     // Sort by siblingRank
@@ -1081,7 +1084,7 @@ export function AppProvider({ children }) {
   // Pay Family Fee (Consolidated)
   const payFamilyFee = ({ familyId, month, amountPaid, paymentMethod = 'Cash at Counter', paymentRemarks = '' }) => {
     const family = families.find(f => f.id === familyId);
-    const famStudents = students.filter(s => s.familyId === familyId || (family?.studentIds && family.studentIds.includes(s.id)));
+    const famStudents = students.filter(s => !s.movedToSession && (s.familyId === familyId || (family?.studentIds && family.studentIds.includes(s.id))));
     
     // Find matching slips for this family for this month
     const matchingSlips = feeSlips.filter(s => 
@@ -1386,7 +1389,7 @@ export function AppProvider({ children }) {
   };
 
   // --- TWO-SYSTEM SYNCHRONIZATION & SOFTWARE UPDATE ENGINE ---
-  const [softwareVersion] = useState('v2.5.0');
+  const [softwareVersion] = useState('v2.6.0');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatusMessage, setUpdateStatusMessage] = useState('');
@@ -1772,8 +1775,10 @@ export function AppProvider({ children }) {
     } catch (err) { showToast(`Cannot switch session: ${err.message}`, 'danger'); }
   };
 
+  const canManageSessions = isAuthenticated && (hasPermission('students') || hasPermission('settings'));
+
   const addSession = async (startYear) => {
-    if (!isAuthenticated || currentUser?.role !== 'Super Admin') throw new Error('Only the Super Admin can add sessions.');
+    if (!canManageSessions) throw new Error('Your account needs Students or Settings access to create sessions.');
     const year = Number(startYear);
     const id = `${year}-${year + 1}`;
     if (!Number.isInteger(year) || !isSession(id)) throw new Error('Enter a valid start year between 2000 and 9998.');
@@ -1785,10 +1790,72 @@ export function AppProvider({ children }) {
     return id;
   };
 
+  const convertStudentsToSession = async (ids, targetSession) => {
+    if (!isAuthenticated || !hasPermission('students')) throw new Error('Your account needs Students access.');
+    if (!sessions.includes(targetSession) || targetSession === ACTIVE_SESSION) throw new Error('Create and select a different destination session.');
+    if (!ids.length || ids.length > 100) throw new Error('Select between 1 and 100 students.');
+    const execute = async () => {
+      const db = getFirestoreDb();
+      let plan;
+      if (db) {
+        const pending = await Promise.allSettled([...pendingWrites]);
+        if (pending.some(r => r.status === 'rejected')) throw new Error('Save pending changes before moving students.');
+        const destinationSnapshot = await getDocs(firestoreCollection(db, ...collectionPath('students', targetSession)));
+        const destination = destinationSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+        // All source/destination reads precede writes; any denial/conflict leaves both unchanged.
+        plan = await runTransaction(db, async transaction => {
+          const sources = []; const targets = [];
+          for (const id of [...new Set(ids)]) {
+            sources.push(await transaction.get(firestoreDoc(db, ...collectionPath('students', ACTIVE_SESSION), id)));
+            targets.push(await transaction.get(firestoreDoc(db, ...collectionPath('students', targetSession), id)));
+          }
+          const freshSource = students.filter(s => !ids.includes(s.id));
+          for (const snap of sources) if (snap.exists()) freshSource.push({ ...snap.data(), id: snap.id });
+          const freshDestination = destination.filter(s => !ids.includes(s.id));
+          for (const snap of targets) if (snap.exists()) freshDestination.push({ ...snap.data(), id: snap.id });
+          const result = planStudentTransfer(freshSource, freshDestination, ids, ACTIVE_SESSION, targetSession);
+          for (const student of result.moved) {
+            transaction.set(firestoreDoc(db, ...collectionPath('students', targetSession), student.id), student);
+            transaction.update(firestoreDoc(db, ...collectionPath('students', ACTIVE_SESSION), student.id), {
+              movedToSession: targetSession, transferredAt: student.transferredAt
+            });
+          }
+          return result;
+        });
+      } else {
+        const savedSource = readSessionStudents(window.localStorage, ACTIVE_SESSION);
+        const source = savedSource.length ? savedSource : students;
+        plan = planStudentTransfer(source, readSessionStudents(window.localStorage, targetSession), ids, ACTIVE_SESSION, targetSession);
+      }
+      // Cloud transactions are already durable; a cache error must not report a failed move.
+      try { commitLocalStudentTransfer(window.localStorage, ACTIVE_SESSION, targetSession, plan); }
+      catch (err) { if (!db) throw err; console.warn('Transfer saved to cloud; local cache unavailable:', err); }
+      setStudents(plan.source);
+      showToast(`${plan.moved.length} student(s) moved to ${targetSession}.`, 'success');
+      return plan.moved.length;
+    };
+    return window.navigator?.locks
+      ? window.navigator.locks.request('sca-student-session-transfer', execute)
+      : execute();
+  };
+
+  // Refresh this tab after another tab completes a local move.
+  useEffect(() => {
+    const refresh = event => {
+      if (event.key === 'sca_student_session_records') {
+        try { setStudents(readSessionStudents(window.localStorage, ACTIVE_SESSION)); }
+        catch (error) { console.warn('Session roster reload failed:', error); }
+      }
+    };
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
+  }, []);
+
   // Filtered lists based on current selected campus
+  const sessionStudents = visibleStudents(students);
   const filteredStudents = selectedCampus === 'ALL' 
-    ? students 
-    : students.filter(s => s.campus === selectedCampus);
+    ? sessionStudents 
+    : sessionStudents.filter(s => s.campus === selectedCampus);
 
   const filteredStaff = selectedCampus === 'ALL'
     ? staff
@@ -2504,6 +2571,8 @@ export function AppProvider({ children }) {
       sessions,
       switchSession,
       addSession,
+      canManageSessions,
+      convertStudentsToSession,
       activeTab,
       setActiveTab,
       selectedCampus,
@@ -2513,7 +2582,7 @@ export function AppProvider({ children }) {
       updateCampus,
       deleteCampus,
       students: filteredStudents,
-      allStudents: students,
+      allStudents: sessionStudents,
       addStudent,
       updateStudent,
       updateStudentFeeStructure,

@@ -1,8 +1,8 @@
 # Yearly academic sessions
 
-The existing interface and modules are retained. The sidebar now selects an academic session. Super Admins can add a year under Settings → General / Academic Session Configuration. Sessions run April to March; January–March belong to the ending year.
+The existing interface and modules are retained. The sidebar now selects an academic session. Users with Students or Settings permission can create a year from the sidebar or Settings → General. A destination session can also be created inside Convert to Session. Sessions run April to March; January–March belong to the ending year.
 
-Existing records stay in 2026–2027 at their original local-storage keys and Firestore collection paths. No existing records are moved or deleted. New years start empty, with separate students, staff, families, fee slips/payment histories, ledger/salary entries and attendance. School branding, campuses, users and the sibling discount policy remain shared. Selecting a session asks the user to save unfinished forms and reloads the application; selection is per browser tab and survives refresh. The switch waits for pending cloud writes before reloading. It does not copy students, promote classes or carry balances automatically.
+Existing records stay in 2026–2027 at their original local-storage keys and Firestore collection paths. No existing records are moved or deleted. New years start empty, with separate students, staff, families, fee slips/payment histories, ledger/salary entries and attendance. School branding, campuses, users and the sibling discount policy remain shared. Selecting a session asks the user to save unfinished forms and reloads the application; selection is per browser tab and survives refresh. The switch waits for pending cloud writes before reloading. Students are never added to another session automatically. In Students, Convert to Session lets users explicitly select up to 100 students and move their profiles to a chosen session. It does not promote classes or carry balances automatically.
 
 For standalone use, records persist in the same browser and origin as before. For configured Firebase installations, session names are read from `academicSessions`, and new-year records use `academicSessions/{YYYY-YYYY}/{collection}/{id}`. Existing 2026–2027 records still use root collections. The session selector does not grant additional access; existing Firestore security rules must authorize the new paths for the same intended school administrators. No production rules or authentication configuration are changed by this update. Cloud behavior has not been exercised against the school's live database.
 
@@ -17,3 +17,13 @@ The source has no exam/results module, so no new unrelated module is introduced.
 ## Release
 
 Deploy the merged source through the site's existing Netlify process. This branch does not change hosting or publish a separate copy. Verify with a test account that the Firestore rules permit session creation/read/write before entering a new year's real records. Existing browser-only data remains on its original site origin.
+
+## Convert to Session (v2.6.0)
+
+Use the Students page filters, click Convert to Session, select students, choose (or create) a destination, and click Move Students. Converted students no longer appear in the source roster. Identity, parent/contact details, class and fee rates move. Each year's fee slips, payments, ledger, balances and attendance remain in that year; sibling groups are not copied. Link siblings in the destination as needed.
+
+Source student snapshots are retained internally with a transfer marker for historical integrity, but excluded from all active rosters and sibling generation. Moving the student back restores that session's own balance, fee history and family links. Duplicate active student IDs or campus roll numbers are rejected. No session is automatically created except the existing legacy 2026–2027 record used to retain original data.
+
+Local transfers commit both rosters in one storage write. A quota error leaves both unchanged. Later local edits use that same session-scoped store. Where supported, a browser lock serializes local transfers; other tabs refresh on the storage event. Firebase transfers use an atomic transaction reading both student documents before writing, so denied writes or a changed source do not half-transfer a student. Live Firebase permissions were not changed or exercised.
+
+Verification for this update: production build passed; the five original academic-session checks and seven transfer checks passed. A server-render/context integration check verified that an Admin with Students permission can create a session, sees Create Session / Convert to Session, moves a student through the actual context action, and reopens separate source/destination rosters with no fee or attendance data copied.
