@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -288,9 +289,10 @@ export default function LoginView() {
           fontSize: '0.74rem',
           color: '#94a3b8'
         }}>
-          Shezad Children Academy · Academic Session 2026–2027
+          Shezad Children Academy · Academic Session {SESSION_LABEL}
         </div>
       </div>
     </div>
   );
 }
+

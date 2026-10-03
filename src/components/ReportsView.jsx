@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear, getStudentYearlyFeeLedger } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -122,7 +123,7 @@ export default function ReportsView() {
               OFFICIAL FINANCIAL AUDIT REPORT
             </div>
             <div style={{ fontSize: '0.8rem', color: '#0369a1', fontWeight: '700' }}>
-              Session 2026–2027 (April 2026 → March 2027)
+              Session {SESSION_LABEL} (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})
             </div>
             <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
               Report Type: {activeReportTab.toUpperCase()} · Generated on: {new Date().toLocaleDateString('en-GB')}
@@ -289,7 +290,7 @@ export default function ReportsView() {
         <div className="section-card">
           <div className="section-card-header">
             <div>
-              <h3 className="chart-title">📅 Academic Year Monthly Audit Summary (April 2026 → March 2027)</h3>
+              <h3 className="chart-title">📅 Academic Year Monthly Audit Summary (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})</h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Complete 12-month billing, collections, transport, and recovery rate</p>
             </div>
           </div>
@@ -342,7 +343,7 @@ export default function ReportsView() {
         <div className="section-card">
           <div className="section-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <h3 className="chart-title">👤 Student Complete Academic Year Financial Ledger (April 2026 → March 2027)</h3>
+              <h3 className="chart-title">👤 Student Complete Academic Year Financial Ledger (April {SESSION_START_YEAR} → March {SESSION_END_YEAR})</h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
                 {targetStudent ? `${targetStudent.name} (${targetStudent.rollNo}) · Class ${targetStudent.classGrade} · Campus: ${targetStudent.campus} · Phone: ${targetStudent.phone}` : 'Select a student'}
               </p>
@@ -714,3 +715,4 @@ export default function ReportsView() {
     </div>
   );
 }
+

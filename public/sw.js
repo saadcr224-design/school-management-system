@@ -1,5 +1,5 @@
 // Service Worker for Shezad Children Academy Desktop & Mobile App
-const CACHE_NAME = 'shezad-academy-v2';
+const CACHE_NAME = 'shezad-academy-v2.5-sessions';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -78,3 +78,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+

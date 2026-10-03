@@ -1,10 +1,11 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 export default function AttendanceView() {
   const { students, staff, campuses, saveAttendanceRecord } = useApp();
   const [attendanceType, setAttendanceType] = useState('students'); // 'students' or 'staff'
-  const [attendanceDate, setAttendanceDate] = useState('2026-03-18');
+  const [attendanceDate, setAttendanceDate] = useState(`${SESSION_START_YEAR}-04-01`);
   const [selectedCampus, setSelectedCampus] = useState('ABB');
   const [selectedClass, setSelectedClass] = useState('9th');
   
@@ -305,3 +306,4 @@ export default function AttendanceView() {
     </div>
   );
 }
+

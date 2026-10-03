@@ -1,3 +1,4 @@
+import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp, ACADEMIC_MONTHS, getAcademicMonthYear } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -45,7 +46,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
 
   // Academic Start Month & Year (April to March Cycle)
   const [selectedAcademicMonth, setSelectedAcademicMonth] = useState('April');
-  const [academicYear, setAcademicYear] = useState('2026');
+  const [academicYear, setAcademicYear] = useState(SESSION_START_YEAR);
 
   // Common Fee Fields
   const [dueDate, setDueDate] = useState(() => {
@@ -74,15 +75,14 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
     else if (billingDuration === 'custom') numMonths = Math.min(12, Math.max(1, Number(customMonthsCount || 1)));
 
     const list = [];
-    for (let i = 0; i < numMonths; i++) {
+    for (let i = 0; i < Math.min(numMonths, 12 - safeStartIdx); i++) {
       const mIdx = (safeStartIdx + i) % 12;
       const mName = ACADEMIC_MONTHS[mIdx];
       // Academic year handling: If session started in April (or May-Dec), Jan-Mar belong to (academicYear + 1)
-      const baseYearNum = Number(academicYear) || 2026;
+      const baseYearNum = Number(academicYear) || Number(SESSION_START_YEAR);
       let y = String(baseYearNum);
       const isPostJan = ['January', 'February', 'March'].includes(mName);
-      const isStartPreJan = ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].includes(selectedAcademicMonth);
-      if (isPostJan && isStartPreJan) {
+      if (isPostJan) {
         y = String(baseYearNum + 1);
       }
 
@@ -839,9 +839,7 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
                   onChange={(e) => setAcademicYear(e.target.value)}
                   style={{ fontWeight: '700' }}
                 >
-                  <option value="2026">2026</option>
-                  <option value="2027">2027</option>
-                  <option value="2028">2028</option>
+                  <option value={SESSION_START_YEAR}>{SESSION_START_YEAR}–{SESSION_END_YEAR}</option>
                 </select>
               </div>
 
@@ -1386,3 +1384,4 @@ export default function GenerateFeeModal({ isOpen, onClose }) {
     </div>
   );
 }
+

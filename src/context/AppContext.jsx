@@ -5,13 +5,29 @@ import {
   clearFirebaseConfig, 
   getSavedFirebaseConfig, 
   getFirestoreDb, 
-  collection, 
+  collection as firestoreCollection, 
   getDocs, 
-  setDoc, 
-  doc, 
-  deleteDoc,
+  setDoc as firestoreSetDoc, 
+  doc as firestoreDoc, 
+  deleteDoc as firestoreDeleteDoc,
   onSnapshot
 } from '../services/firebase';
+
+import { ACTIVE_SESSION, LEGACY_SESSION, SESSION_START_YEAR, SESSION_END_YEAR, SESSION_LABEL, SESSION_KEYS,
+  createSessionStorage, collectionPath, isSession, readSessions, rememberSessions, sessionDate } from '../services/academicSession';
+
+const localStorage = createSessionStorage(window.localStorage, ACTIVE_SESSION);
+const collection = (db, name) => firestoreCollection(db, ...collectionPath(name, ACTIVE_SESSION));
+const doc = (db, name, id) => firestoreDoc(db, ...collectionPath(name, ACTIVE_SESSION), id);
+
+const pendingWrites = new Set();
+function trackWrite(promise) {
+  pendingWrites.add(promise);
+  promise.then(() => pendingWrites.delete(promise), () => pendingWrites.delete(promise));
+  return promise;
+}
+const setDoc = (...args) => trackWrite(firestoreSetDoc(...args));
+const deleteDoc = (...args) => trackWrite(firestoreDeleteDoc(...args));
 
 const AppContext = createContext();
 
@@ -20,22 +36,22 @@ export const ACADEMIC_MONTHS = [
   'October', 'November', 'December', 'January', 'February', 'March'
 ];
 
-export const CURRENT_ACADEMIC_YEAR = '2026';
-export const NEXT_ACADEMIC_YEAR = '2027';
-export const ACADEMIC_SESSION = 'Session 2026–2027';
+export const CURRENT_ACADEMIC_YEAR = SESSION_START_YEAR;
+export const NEXT_ACADEMIC_YEAR = SESSION_END_YEAR;
+export const ACADEMIC_SESSION = `Session ${SESSION_LABEL}`;
 
 // Helper to format academic month display string e.g. "April 2026" or "February 2027"
-export function getAcademicMonthYear(monthName, baseYear = 2026) {
+export function getAcademicMonthYear(monthName, baseYear = Number(SESSION_START_YEAR)) {
   const isSecondHalf = ['January', 'February', 'March'].includes(monthName);
   const year = isSecondHalf ? Number(baseYear) + 1 : Number(baseYear);
   return `${monthName} ${year}`;
 }
 
 // Complete 12-Month Academic Year Financial Ledger (April–March)
-export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear = '2026-2027') {
+export function getStudentYearlyFeeLedger(student, feeSlips = [], academicYear = ACTIVE_SESSION) {
   if (!student) return { months: [], totals: {} };
 
-  const startYear = parseInt(academicYear.split('-')[0]) || 2026;
+  const startYear = parseInt(academicYear.split('-')[0]) || Number(SESSION_START_YEAR);
   const endYear = startYear + 1;
 
   // Student specific slips
@@ -724,6 +740,7 @@ const INITIAL_USERS = [
 ];
 
 export function AppProvider({ children }) {
+  const [sessions, setSessions] = useState(readSessions);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCampus, setSelectedCampus] = useState('ALL');
   
@@ -985,7 +1002,7 @@ export function AppProvider({ children }) {
   };
 
   // Generate Fee Slips for a Family (all siblings)
-  const generateFamilyFeeSlips = ({ familyId, month = 'April 2026', dueDate = '2026-04-15' }) => {
+  const generateFamilyFeeSlips = ({ familyId, month = `April ${SESSION_START_YEAR}`, dueDate = sessionDate('April') }) => {
     const family = families.find(f => f.id === familyId);
     if (!family) return { success: false, error: 'Family not found' };
 
@@ -1369,7 +1386,7 @@ export function AppProvider({ children }) {
   };
 
   // --- TWO-SYSTEM SYNCHRONIZATION & SOFTWARE UPDATE ENGINE ---
-  const [softwareVersion] = useState('v2.4.0');
+  const [softwareVersion] = useState('v2.5.0');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatusMessage, setUpdateStatusMessage] = useState('');
@@ -1387,7 +1404,7 @@ export function AppProvider({ children }) {
     try {
       // 1. Students
       const stdSnap = await getDocs(collection(currentDb, 'students'));
-      if (!stdSnap.empty) {
+      if (!stdSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         const remoteStudents = [];
         stdSnap.forEach(d => remoteStudents.push({ id: d.id, ...d.data() }));
         setStudents(remoteStudents);
@@ -1397,7 +1414,7 @@ export function AppProvider({ children }) {
 
       // 2. Fee Slips
       const feeSnap = await getDocs(collection(currentDb, 'feeSlips'));
-      if (!feeSnap.empty) {
+      if (!feeSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         const remoteFeeSlips = [];
         feeSnap.forEach(d => remoteFeeSlips.push({ id: d.id, ...d.data() }));
         setFeeSlips(remoteFeeSlips);
@@ -1407,7 +1424,7 @@ export function AppProvider({ children }) {
 
       // 3. Staff
       const staffSnap = await getDocs(collection(currentDb, 'staff'));
-      if (!staffSnap.empty) {
+      if (!staffSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         const remoteStaff = [];
         staffSnap.forEach(d => remoteStaff.push({ id: d.id, ...d.data() }));
         setStaff(remoteStaff);
@@ -1417,7 +1434,7 @@ export function AppProvider({ children }) {
 
       // 4. Ledger
       const ledSnap = await getDocs(collection(currentDb, 'ledger'));
-      if (!ledSnap.empty) {
+      if (!ledSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         const remoteLedger = [];
         ledSnap.forEach(d => remoteLedger.push({ id: d.id, ...d.data() }));
         setLedger(remoteLedger);
@@ -1447,7 +1464,7 @@ export function AppProvider({ children }) {
 
       // 7. Attendance
       const attSnap = await getDocs(collection(currentDb, 'attendance'));
-      if (!attSnap.empty) {
+      if (!attSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         const remoteAttendance = [];
         attSnap.forEach(d => {
           const data = d.data();
@@ -1457,7 +1474,7 @@ export function AppProvider({ children }) {
             remoteAttendance.push({ id: d.id, ...data });
           }
         });
-        if (remoteAttendance.length > 0) {
+        if (remoteAttendance.length > 0 || ACTIVE_SESSION !== LEGACY_SESSION) {
           setAttendance(remoteAttendance);
           localStorage.setItem('peace_attendance', JSON.stringify(remoteAttendance));
           totalSynced += remoteAttendance.length;
@@ -1591,11 +1608,11 @@ export function AppProvider({ children }) {
   // Check saved Firebase and sync from backend on initial mount
   useEffect(() => {
     const savedConfig = getSavedFirebaseConfig();
-    if (savedConfig) {
+    {
       const res = initFirebase(savedConfig);
       if (res.isConnected) {
         setFirebaseConnected(true);
-        setFirebaseInfo({ status: 'Connected to Firestore', error: null, projectId: savedConfig.projectId });
+        setFirebaseInfo({ status: 'Connected to Firestore', error: null, projectId: savedConfig?.projectId || res.app?.options?.projectId });
         // Fetch all shared records immediately so System B gets latest data from System A
         fetchAllFromBackend();
       }
@@ -1613,7 +1630,7 @@ export function AppProvider({ children }) {
     try {
       // 1. Live Students
       const unsubStudents = onSnapshot(collection(currentDb, 'students'), (snap) => {
-        if (!snap.empty) {
+        if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           setStudents(list);
@@ -1624,7 +1641,7 @@ export function AppProvider({ children }) {
 
       // 2. Live Fee Slips
       const unsubFeeSlips = onSnapshot(collection(currentDb, 'feeSlips'), (snap) => {
-        if (!snap.empty) {
+        if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           setFeeSlips(list);
@@ -1635,7 +1652,7 @@ export function AppProvider({ children }) {
 
       // 3. Live Staff
       const unsubStaff = onSnapshot(collection(currentDb, 'staff'), (snap) => {
-        if (!snap.empty) {
+        if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           setStaff(list);
@@ -1646,7 +1663,7 @@ export function AppProvider({ children }) {
 
       // 4. Live Ledger
       const unsubLedger = onSnapshot(collection(currentDb, 'ledger'), (snap) => {
-        if (!snap.empty) {
+        if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
           setLedger(list);
@@ -1688,7 +1705,7 @@ export function AppProvider({ children }) {
 
       // 7. Live Attendance
       const unsubAttendance = onSnapshot(collection(currentDb, 'attendance'), (snap) => {
-        if (!snap.empty) {
+        if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => {
             const data = d.data();
@@ -1698,7 +1715,7 @@ export function AppProvider({ children }) {
               list.push({ id: d.id, ...data });
             }
           });
-          if (list.length > 0) {
+          if (list.length > 0 || ACTIVE_SESSION !== LEGACY_SESSION) {
             setAttendance(list);
             localStorage.setItem('peace_attendance', JSON.stringify(list));
           }
@@ -1715,6 +1732,58 @@ export function AppProvider({ children }) {
       });
     };
   }, [firebaseConnected, currentUser?.id]);
+
+  // Discover year names across devices without changing another tab's selection.
+  useEffect(() => {
+    if (!firebaseConnected) return;
+    const db = getFirestoreDb();
+    return onSnapshot(firestoreCollection(db, 'academicSessions'), snap => {
+      const names = snap.docs.map(d => d.id).filter(isSession);
+      try { setSessions(rememberSessions(names)); }
+      catch { setSessions([...new Set([LEGACY_SESSION, ACTIVE_SESSION, ...names])].sort()); }
+    }, err => showToast(`Session list could not sync: ${err.message}`, 'danger'));
+  }, [firebaseConnected]);
+
+  // Families belong to the selected year just like their linked students.
+  useEffect(() => {
+    localStorage.setItem('peace_families', JSON.stringify(families));
+  }, [families]);
+  useEffect(() => {
+    if (!firebaseConnected) return;
+    return onSnapshot(collection(getFirestoreDb(), 'families'), snap => {
+      if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+        setFamilies(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      }
+    }, err => console.warn('Families live sync:', err));
+  }, [firebaseConnected]);
+
+  const switchSession = async (session) => {
+    if (!isAuthenticated || !isSession(session) || !sessions.includes(session) || session === ACTIVE_SESSION) return;
+    if (!window.confirm(`Open session ${session}? Save any unfinished forms first. Current records will remain in ${ACTIVE_SESSION}.`)) return;
+    try {
+      // Flush state before reloading; do not depend on a pending React effect.
+      const data = { peace_students: students, peace_staff: staff, peace_fee_slips: feeSlips,
+        peace_ledger: ledger, peace_attendance: attendance, peace_families: families };
+      Object.entries(data).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+      const writes = await Promise.allSettled([...pendingWrites]);
+      if (writes.some(result => result.status === 'rejected')) throw new Error('Some cloud records could not save. Retry when connected.');
+      window.sessionStorage.setItem('sca_active_session', session);
+      window.location.reload();
+    } catch (err) { showToast(`Cannot switch session: ${err.message}`, 'danger'); }
+  };
+
+  const addSession = async (startYear) => {
+    if (!isAuthenticated || currentUser?.role !== 'Super Admin') throw new Error('Only the Super Admin can add sessions.');
+    const year = Number(startYear);
+    const id = `${year}-${year + 1}`;
+    if (!Number.isInteger(year) || !isSession(id)) throw new Error('Enter a valid start year between 2000 and 9998.');
+    if (sessions.includes(id)) throw new Error('This session already exists. Select it from the session list.');
+    const db = getFirestoreDb();
+    if (db) await setDoc(firestoreDoc(db, 'academicSessions', id), { startYear: year, endYear: year + 1 }, { merge: true });
+    setSessions(rememberSessions([id]));
+    showToast(`Session ${id} added. Select it to enter that year's records.`, 'success');
+    return id;
+  };
 
   // Filtered lists based on current selected campus
   const filteredStudents = selectedCampus === 'ALL' 
@@ -2385,6 +2454,7 @@ export function AppProvider({ children }) {
   };
 
   const syncToFirebase = async () => {
+    const db = getFirestoreDb();
     if (!firebaseConnected || !db) {
       return { success: false, error: 'Firebase is not connected. Please enter valid Firebase configuration first.' };
     }
@@ -2402,6 +2472,7 @@ export function AppProvider({ children }) {
       for (const led of ledger) {
         await setDoc(doc(db, 'ledger', led.id), led);
       }
+      for (const family of families) await setDoc(doc(db, 'families', family.id), family);
       for (const camp of campuses) {
         await setDoc(doc(db, 'campuses', camp.id), camp);
       }
@@ -2423,12 +2494,16 @@ export function AppProvider({ children }) {
     setFamilies(INITIAL_FAMILIES);
     setSchoolProfile(DEFAULT_SCHOOL_PROFILE);
     setAttendance([]);
-    localStorage.clear();
+    SESSION_KEYS.forEach(key => localStorage.removeItem(key));
     showToast('✓ Demo data restored to original state', 'info');
   };
 
   return (
     <AppContext.Provider value={{
+      activeSession: ACTIVE_SESSION,
+      sessions,
+      switchSession,
+      addSession,
       activeTab,
       setActiveTab,
       selectedCampus,
@@ -2544,3 +2619,4 @@ export function useApp() {
   }
   return context;
 }
+
