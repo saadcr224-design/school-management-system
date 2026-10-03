@@ -7,6 +7,7 @@ import StudentDetailsModal from './StudentDetailsModal';
 
 export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onOpenPaymentModal }) {
   const { students, campuses, deleteStudent, updateStudent, updateStudentFeeStructure, feeSlips, currentUser, showToast } = useApp();
+  const [convertStudentId, setConvertStudentId] = useState(null);
   const [convertOpen, setConvertOpen] = useState(false);
   const isSuperAdmin = currentUser?.role === 'Super Admin';
   const [searchTerm, setSearchTerm] = useState('');
@@ -181,7 +182,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
               <span><strong>💳 Pay Student Fee</strong></span>
             </button>
           )}
-          <button className="action-btn-secondary" onClick={() => setConvertOpen(true)}>Convert to Session</button>
+          <button className="action-btn-secondary" onClick={() => { setConvertStudentId(null); setConvertOpen(true); }}>Convert to Session</button>
           <button 
             className="action-btn-secondary"
             onClick={handleExportStudentsCSV}
@@ -351,7 +352,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
         </div>
       </div>
 
-      {convertOpen && <ConvertSessionModal students={filtered} onClose={() => setConvertOpen(false)} />}
+      {convertOpen && <ConvertSessionModal students={convertStudentId ? students.filter(s => s.id === convertStudentId) : filtered} initialSelectedIds={convertStudentId ? [convertStudentId] : []} onClose={() => setConvertOpen(false)} />}
 
       {/* Students Data Table */}
       <div className="section-card">
@@ -447,6 +448,14 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button type="button" className="table-action-icon-btn"
+                        title="Convert Session — move student with all outstanding dues"
+                        aria-label={`Convert session for ${student.name}`}
+                        onClick={event => { event.stopPropagation(); setConvertStudentId(student.id); setConvertOpen(true); }}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4" />
+                        </svg>
+                      </button>
                       {/* 1-Click Collect Fee for Unpaid Students */}
                       {!student.isFeePaid && (
                         <button
