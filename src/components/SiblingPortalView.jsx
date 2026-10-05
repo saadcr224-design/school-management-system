@@ -1,3 +1,4 @@
+import { assertStudentCapacity } from '../services/studentCapacity';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import SchoolLogo from './SchoolLogo';
@@ -180,6 +181,8 @@ export default function SiblingPortalView() {
       return;
     }
 
+    try { assertStudentCapacity(allStudents, newFamChildren.length); }
+    catch (error) { showToast(error.message, 'danger'); return; }
     const newFam = addFamily({
       fatherName: groupFatherName.trim(),
       fatherCnic: groupFatherCnic.trim(),
@@ -238,6 +241,7 @@ export default function SiblingPortalView() {
     };
 
     const createdStd = addStudent(newStudent);
+    if (!createdStd) return;
     linkSibling(fam.id, createdStd.id, newRank);
 
     setIsAddFamilyModalOpen(false);
@@ -254,6 +258,8 @@ export default function SiblingPortalView() {
       return;
     }
 
+    try { assertStudentCapacity(allStudents, newFamChildren.length); }
+    catch (error) { showToast(error.message, 'danger'); return; }
     const newFam = addFamily({
       fatherName: newFamFatherName.trim(),
       fatherCnic: newFamCnic.trim(),
@@ -286,6 +292,7 @@ export default function SiblingPortalView() {
         familyId: newFam.id,
         siblingRank: rank
       });
+      if (!created) return;
       createdIds.push(created.id);
       linkSibling(newFam.id, created.id, rank);
     });
@@ -1589,3 +1596,4 @@ export default function SiblingPortalView() {
     </div>
   );
 }
+

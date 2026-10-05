@@ -1,3 +1,4 @@
+import OfflineStatus from './components/OfflineStatus';
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
@@ -32,6 +33,7 @@ function MainApp() {
 
   return (
     <>
+      <OfflineStatus />
       {/* If not signed in, show the Sign In screen as first page */}
       {!isAuthenticated ? (
         <LoginView />
@@ -140,3 +142,4 @@ export default function App() {
     </AppProvider>
   );
 }
+

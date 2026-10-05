@@ -1,5 +1,6 @@
+import { indexStudentSlips } from '../services/studentCapacity';
 import { SESSION_LABEL, SESSION_START_YEAR, SESSION_END_YEAR } from '../services/academicSession';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp, getStudentYearlyFeeLedger } from '../context/AppContext';
 import ConvertSessionModal from './ConvertSessionModal';
 import SchoolLogo from './SchoolLogo';
@@ -7,6 +8,7 @@ import StudentDetailsModal from './StudentDetailsModal';
 
 export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onOpenPaymentModal }) {
   const { students, campuses, deleteStudent, updateStudent, updateStudentFeeStructure, feeSlips, currentUser, showToast } = useApp();
+  const [page, setPage] = useState(1);
   const [convertStudentId, setConvertStudentId] = useState(null);
   const [convertOpen, setConvertOpen] = useState(false);
   const isSuperAdmin = currentUser?.role === 'Super Admin';
@@ -35,8 +37,10 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
   // Calculate each student's fee summary using complete 12-month academic year ledger
   const studentsWithFeeStats = useMemo(() => {
+    const slipsFor = indexStudentSlips(feeSlips);
     return students.map(student => {
-      const yearlyLedger = getStudentYearlyFeeLedger(student, feeSlips);
+      const studentSlips = slipsFor(student);
+      const yearlyLedger = getStudentYearlyFeeLedger(student, studentSlips);
       const billed = yearlyLedger.totals.totalAnnualFee;
       const paid = yearlyLedger.totals.totalPaid;
       const outstanding = yearlyLedger.totals.totalRemaining;
@@ -44,7 +48,6 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
       // Find first unpaid month / slip
       const firstUnpaidMonth = yearlyLedger.months.find(m => m.status !== 'Paid');
-      const studentSlips = feeSlips.filter(s => s.studentId === student.id || s.rollNo === student.rollNo);
       const latestUnpaidSlip = studentSlips.find(s => s.status !== 'Paid' || (s.totalAmount - (s.amountPaid || 0) > 0));
 
       return {
@@ -79,6 +82,11 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
     return matchesSearch && matchesCampus && matchesClass && matchesFeeStatus;
   });
+
+  useEffect(() => { setPage(1); }, [searchTerm, selectedCampusFilter, selectedClassFilter, feeStatusFilter]);
+  const pages = Math.max(1, Math.ceil(filtered.length / 50));
+  const currentPage = Math.min(page, pages);
+  const pageStudents = filtered.slice((currentPage - 1) * 50, currentPage * 50);
 
   const classesList = ['Nursery', 'Prep', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '1st Year', '2nd Year'];
 
@@ -392,7 +400,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
               </tr>
             </thead>
             <tbody>
-              {filtered.map(student => (
+              {pageStudents.map(student => (
                 <tr key={student.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedStudentForDetails(student)}>
                   <td style={{ fontWeight: '700', color: '#0284c7' }}>
                     <span style={{ textDecoration: 'underline' }}>{student.rollNo}</span>
@@ -596,6 +604,11 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
               )}
             </tbody>
           </table>
+          <div className="no-print" style={{ display: 'flex', gap: 16, padding: 16, alignItems: 'center' }}>
+            <button className="btn-secondary" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
+            <span>Page {currentPage} of {pages} · {filtered.length.toLocaleString()} students · Capacity 10,000 per session</span>
+            <button className="btn-secondary" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Next</button>
+          </div>
         </div>
       </div>
 

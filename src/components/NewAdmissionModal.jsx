@@ -71,13 +71,14 @@ export default function NewAdmissionModal({ isOpen, onClose }) {
       admissionFee: Number(formData.admissionFee) || 0
     };
 
-    addStudent(newStudentData);
+    const createdStudent = addStudent(newStudentData);
+    if (!createdStudent) return;
 
     // Record Admission Fee in Ledger if greater than 0
     if (Number(formData.admissionFee) > 0) {
       addLedgerEntry({
         date: formData.admissionDate,
-        description: `New Admission Fee: ${formData.name} (${rollNo}) - ${campusFullName}`,
+        description: `New Admission Fee: ${formData.name} (${createdStudent.rollNo}) - ${campusFullName}`,
         category: 'Admission Fee',
         campus: campusCode,
         type: 'Credit',
@@ -330,3 +331,4 @@ export default function NewAdmissionModal({ isOpen, onClose }) {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+import { assertStudentCapacity } from './studentCapacity.js';
 import { isSession, createSessionStorage, STUDENT_SESSION_STORE } from './academicSession.js';
 
 export function visibleStudents(records) {
@@ -11,6 +12,7 @@ export function planStudentTransfer(source, destination, ids, fromSession, toSes
   const selected = [...new Set(ids)];
   if (!selected.length) throw new Error('Select at least one student.');
   if (selected.length > 100) throw new Error('Move up to 100 students at a time.');
+  assertStudentCapacity(destination, selected.length);
   const moved = selected.map(id => {
     const student = source.find(s => s.id === id && !s.movedToSession);
     if (!student) throw new Error('A selected student has changed or already moved. Refresh and try again.');

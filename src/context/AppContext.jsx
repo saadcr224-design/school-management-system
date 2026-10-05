@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { durableStorage, flushStorage } from '../services/durableStorage';
+import { checkAppUpdates } from '../services/appUpdates';
+import { assertStudentCapacity, nextRollNumber } from '../services/studentCapacity';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   runTransaction,
   initFirebase, 
@@ -19,7 +22,7 @@ import { ACTIVE_SESSION, LEGACY_SESSION, SESSION_START_YEAR, SESSION_END_YEAR, S
 
 import { visibleStudents, planTransferWithDues, outstandingDues, belongsToStudent, commitLocalStudentTransfer, readSessionStudents, readSessionFeeSlips } from '../services/sessionTransfer';
 
-const localStorage = createSessionStorage(window.localStorage, ACTIVE_SESSION);
+const localStorage = createSessionStorage(durableStorage, ACTIVE_SESSION);
 const collection = (db, name) => firestoreCollection(db, ...collectionPath(name, ACTIVE_SESSION));
 const doc = (db, name, id) => firestoreDoc(db, ...collectionPath(name, ACTIVE_SESSION), id);
 
@@ -756,7 +759,7 @@ const INITIAL_USERS = [
 ];
 
 export function AppProvider({ children }) {
-  const [sessions, setSessions] = useState(readSessions);
+  const [sessions, setSessions] = useState(() => readSessions(durableStorage));
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCampus, setSelectedCampus] = useState('ALL');
   
@@ -766,7 +769,7 @@ export function AppProvider({ children }) {
     return local ? JSON.parse(local) : INITIAL_CAMPUSES;
   });
 
-  const [students, setStudents] = useState(() => {
+  const [students, setStudentsState] = useState(() => {
     const local = localStorage.getItem('peace_students');
     if (!local) return INITIAL_STUDENTS;
     try {
@@ -786,6 +789,13 @@ export function AppProvider({ children }) {
       return INITIAL_STUDENTS;
     }
   });
+
+  const studentsRef = useRef(students);
+  const setStudents = useCallback(next => {
+    const value = typeof next === 'function' ? next(studentsRef.current) : next;
+    studentsRef.current = value;
+    setStudentsState(value);
+  }, []);
 
   const [staff, setStaff] = useState(() => {
     const local = localStorage.getItem('peace_staff');
@@ -1402,7 +1412,7 @@ export function AppProvider({ children }) {
   };
 
   // --- TWO-SYSTEM SYNCHRONIZATION & SOFTWARE UPDATE ENGINE ---
-  const [softwareVersion] = useState('v2.7.0');
+  const [softwareVersion] = useState('v2.8.0');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatusMessage, setUpdateStatusMessage] = useState('');
@@ -1414,13 +1424,13 @@ export function AppProvider({ children }) {
   // Pull all records from Firestore backend into local state
   const fetchAllFromBackend = useCallback(async () => {
     const currentDb = getFirestoreDb();
-    if (!currentDb) return { success: false, syncedCount: 0 };
+    if (!currentDb || !navigator.onLine || pendingWrites.size) return { success: false, syncedCount: 0 };
 
     let totalSynced = 0;
     try {
       // 1. Students
       const stdSnap = await getDocs(collection(currentDb, 'students'));
-      if (!stdSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+      if (!stdSnap.metadata.fromCache && (!stdSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION)) {
         const remoteStudents = [];
         stdSnap.forEach(d => remoteStudents.push({ id: d.id, ...d.data() }));
         setStudents(remoteStudents);
@@ -1430,7 +1440,7 @@ export function AppProvider({ children }) {
 
       // 2. Fee Slips
       const feeSnap = await getDocs(collection(currentDb, 'feeSlips'));
-      if (!feeSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+      if (!feeSnap.metadata.fromCache && (!feeSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION)) {
         const remoteFeeSlips = [];
         feeSnap.forEach(d => remoteFeeSlips.push({ id: d.id, ...d.data() }));
         setFeeSlips(remoteFeeSlips);
@@ -1440,7 +1450,7 @@ export function AppProvider({ children }) {
 
       // 3. Staff
       const staffSnap = await getDocs(collection(currentDb, 'staff'));
-      if (!staffSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+      if (!staffSnap.metadata.fromCache && (!staffSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION)) {
         const remoteStaff = [];
         staffSnap.forEach(d => remoteStaff.push({ id: d.id, ...d.data() }));
         setStaff(remoteStaff);
@@ -1450,7 +1460,7 @@ export function AppProvider({ children }) {
 
       // 4. Ledger
       const ledSnap = await getDocs(collection(currentDb, 'ledger'));
-      if (!ledSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+      if (!ledSnap.metadata.fromCache && (!ledSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION)) {
         const remoteLedger = [];
         ledSnap.forEach(d => remoteLedger.push({ id: d.id, ...d.data() }));
         setLedger(remoteLedger);
@@ -1480,7 +1490,7 @@ export function AppProvider({ children }) {
 
       // 7. Attendance
       const attSnap = await getDocs(collection(currentDb, 'attendance'));
-      if (!attSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
+      if (!attSnap.metadata.fromCache && (!attSnap.empty || ACTIVE_SESSION !== LEGACY_SESSION)) {
         const remoteAttendance = [];
         attSnap.forEach(d => {
           const data = d.data();
@@ -1519,55 +1529,15 @@ export function AppProvider({ children }) {
   const checkForSoftwareUpdates = async () => {
     setUpdateModalOpen(true);
     setIsUpdating(true);
-    setUpdateProgress(15);
-    setUpdateStatusMessage('Connecting to Central Database & Cloud Backend...');
-
-    const currentDb = getFirestoreDb();
-
-    await new Promise(r => setTimeout(r, 400));
-    setUpdateProgress(40);
-    setUpdateStatusMessage('Synchronizing students, fee payments, ledger, and staff across all systems...');
-
-    // Push local records if database is empty / connect and pull latest records
-    if (currentDb) {
-      try {
-        const fetchRes = await fetchAllFromBackend();
-        if (fetchRes.syncedCount === 0) {
-          // If backend was empty, initialize it with current data
-          for (const s of students) await setDoc(doc(currentDb, 'students', s.id), s, { merge: true });
-          for (const fs of feeSlips) await setDoc(doc(currentDb, 'feeSlips', fs.id), fs, { merge: true });
-          for (const st of staff) await setDoc(doc(currentDb, 'staff', st.id), st, { merge: true });
-          for (const l of ledger) await setDoc(doc(currentDb, 'ledger', l.id), l, { merge: true });
-          for (const u of users) await setDoc(doc(currentDb, 'users', u.id), u, { merge: true });
-          for (const c of campuses) await setDoc(doc(currentDb, 'campuses', c.id), c, { merge: true });
-        }
-      } catch (err) {
-        console.warn("Sync during update notice:", err);
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 400));
-    setUpdateProgress(75);
-    setUpdateStatusMessage('Refreshing local caches & validating balance calculations...');
-
-    // Service worker update
-    if ('serviceWorker' in navigator) {
-      try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) {
-          await reg.update();
-        }
-      } catch (e) {}
-    }
-
-    await new Promise(r => setTimeout(r, 300));
-    setUpdateProgress(100);
-    const nowStr = new Date().toLocaleString();
-    setLastUpdatedTime(nowStr);
-    localStorage.setItem('peace_last_updated', nowStr);
-    setUpdateStatusMessage('✓ Multi-system synchronization complete! All data and modules are 100% up-to-date.');
-    setIsUpdating(false);
-    showToast('✓ Data synchronized successfully! Both systems are in sync with latest records.', 'success');
+    setUpdateProgress(20);
+    setUpdateStatusMessage('Checking for published software updates…');
+    try {
+      setUpdateStatusMessage(await checkAppUpdates());
+      setUpdateProgress(100);
+      setLastUpdatedTime(new Date().toLocaleString());
+    } catch (error) {
+      setUpdateStatusMessage(`Update check failed: ${error.message}. Your installed app and records remain available.`);
+    } finally { setIsUpdating(false); }
   };
 
   // Firebase status state
@@ -1646,6 +1616,7 @@ export function AppProvider({ children }) {
     try {
       // 1. Live Students
       const unsubStudents = onSnapshot(collection(currentDb, 'students'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1657,6 +1628,7 @@ export function AppProvider({ children }) {
 
       // 2. Live Fee Slips
       const unsubFeeSlips = onSnapshot(collection(currentDb, 'feeSlips'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1668,6 +1640,7 @@ export function AppProvider({ children }) {
 
       // 3. Live Staff
       const unsubStaff = onSnapshot(collection(currentDb, 'staff'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1679,6 +1652,7 @@ export function AppProvider({ children }) {
 
       // 4. Live Ledger
       const unsubLedger = onSnapshot(collection(currentDb, 'ledger'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1690,6 +1664,7 @@ export function AppProvider({ children }) {
 
       // 5. Live Users & Real-time Permissions
       const unsubUsers = onSnapshot(collection(currentDb, 'users'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1710,6 +1685,7 @@ export function AppProvider({ children }) {
 
       // 6. Live Campuses
       const unsubCampuses = onSnapshot(collection(currentDb, 'campuses'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty) {
           const list = [];
           snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -1721,6 +1697,7 @@ export function AppProvider({ children }) {
 
       // 7. Live Attendance
       const unsubAttendance = onSnapshot(collection(currentDb, 'attendance'), (snap) => {
+        if (snap.metadata.fromCache) return;
         if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
           const list = [];
           snap.forEach(d => {
@@ -1755,7 +1732,7 @@ export function AppProvider({ children }) {
     const db = getFirestoreDb();
     return onSnapshot(firestoreCollection(db, 'academicSessions'), snap => {
       const names = snap.docs.map(d => d.id).filter(isSession);
-      try { setSessions(rememberSessions(names)); }
+      try { setSessions(rememberSessions(names, durableStorage)); }
       catch { setSessions([...new Set([LEGACY_SESSION, ACTIVE_SESSION, ...names])].sort()); }
     }, err => showToast(`Session list could not sync: ${err.message}`, 'danger'));
   }, [firebaseConnected]);
@@ -1767,6 +1744,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!firebaseConnected) return;
     return onSnapshot(collection(getFirestoreDb(), 'families'), snap => {
+      if (snap.metadata.fromCache) return;
       if (!snap.empty || ACTIVE_SESSION !== LEGACY_SESSION) {
         setFamilies(snap.docs.map(d => ({ ...d.data(), id: d.id })));
       }
@@ -1781,8 +1759,7 @@ export function AppProvider({ children }) {
       const data = { peace_students: students, peace_staff: staff, peace_fee_slips: feeSlips,
         peace_ledger: ledger, peace_attendance: attendance, peace_families: families };
       Object.entries(data).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
-      const writes = await Promise.allSettled([...pendingWrites]);
-      if (writes.some(result => result.status === 'rejected')) throw new Error('Some cloud records could not save. Retry when connected.');
+      await flushStorage();
       window.sessionStorage.setItem('sca_active_session', session);
       window.location.reload();
     } catch (err) { showToast(`Cannot switch session: ${err.message}`, 'danger'); }
@@ -1797,8 +1774,10 @@ export function AppProvider({ children }) {
     if (!Number.isInteger(year) || !isSession(id)) throw new Error('Enter a valid start year between 2000 and 9998.');
     if (sessions.includes(id)) throw new Error('This session already exists. Select it from the session list.');
     const db = getFirestoreDb();
-    if (db) await setDoc(firestoreDoc(db, 'academicSessions', id), { startYear: year, endYear: year + 1 }, { merge: true });
-    setSessions(rememberSessions([id]));
+    if (db) setDoc(firestoreDoc(db, 'academicSessions', id), { startYear: year, endYear: year + 1 }, { merge: true })
+      .catch(error => showToast(`Session saved on this device; cloud sync failed: ${error.message}`, 'danger'));
+    setSessions(rememberSessions([id], durableStorage));
+    await flushStorage();
     showToast(`Session ${id} added. Select it to enter that year's records.`, 'success');
     return id;
   };
@@ -1816,6 +1795,7 @@ export function AppProvider({ children }) {
       const db = getFirestoreDb();
       let plan;
       if (db) {
+        if (!navigator.onLine) throw new Error('Connect to the internet to move students between cloud sessions. Offline admissions and fee records remain available.');
         const pending = await Promise.allSettled([...pendingWrites]);
         if (pending.some(r => r.status === 'rejected')) throw new Error('Save pending changes before moving students.');
         const [destinationSnapshot, sourceFeesSnapshot, targetFeesSnapshot] = await Promise.all([
@@ -1860,13 +1840,13 @@ export function AppProvider({ children }) {
           return result;
         });
       } else {
-        const savedSource = readSessionStudents(window.localStorage, ACTIVE_SESSION);
+        const savedSource = readSessionStudents(durableStorage, ACTIVE_SESSION);
         const source = savedSource.length ? savedSource : students;
-        const savedFees = readSessionFeeSlips(window.localStorage, ACTIVE_SESSION);
-        plan = verifyPreview(planTransferWithDues(source, readSessionStudents(window.localStorage, targetSession),
-          savedFees.length ? savedFees : feeSlips, readSessionFeeSlips(window.localStorage, targetSession), ids, ACTIVE_SESSION, targetSession, transferId));
+        const savedFees = readSessionFeeSlips(durableStorage, ACTIVE_SESSION);
+        plan = verifyPreview(planTransferWithDues(source, readSessionStudents(durableStorage, targetSession),
+          savedFees.length ? savedFees : feeSlips, readSessionFeeSlips(durableStorage, targetSession), ids, ACTIVE_SESSION, targetSession, transferId));
       }
-      try { commitLocalStudentTransfer(window.localStorage, ACTIVE_SESSION, targetSession, plan); }
+      try { commitLocalStudentTransfer(durableStorage, ACTIVE_SESSION, targetSession, plan); await flushStorage(); }
       catch (err) { if (!db) throw err; console.warn('Transfer saved to cloud; local cache unavailable:', err); }
       setStudents(plan.source); setFeeSlips(plan.sourceFeeSlips);
       showToast(`${plan.moved.length} student(s) and Rs ${plan.totalDues.toLocaleString()} dues moved to ${targetSession}.`, 'success');
@@ -1879,7 +1859,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const refresh = event => {
       if (event.key === 'sca_student_session_records') {
-        try { setStudents(readSessionStudents(window.localStorage, ACTIVE_SESSION)); setFeeSlips(readSessionFeeSlips(window.localStorage, ACTIVE_SESSION)); }
+        try { setStudents(readSessionStudents(durableStorage, ACTIVE_SESSION)); setFeeSlips(readSessionFeeSlips(durableStorage, ACTIVE_SESSION)); }
         catch (error) { console.warn('Session roster reload failed:', error); }
       }
     };
@@ -1982,9 +1962,12 @@ export function AppProvider({ children }) {
 
   // --- Student Actions ---
   const addStudent = (newStudent) => {
-    const id = 'std-' + Date.now();
+    try { assertStudentCapacity(studentsRef.current); }
+    catch (error) { showToast(error.message, 'danger'); return null; }
+    const id = 'std-' + crypto.randomUUID();
     const studentWithId = { 
       ...newStudent, 
+      rollNo: nextRollNumber(studentsRef.current, newStudent.campus),
       id, 
       balance: 0, 
       status: 'Active',
