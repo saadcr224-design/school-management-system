@@ -1,7 +1,9 @@
 // Firebase Service & Synchronization Layer
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   runTransaction, 
   collection, 
   getDocs, 
@@ -13,7 +15,7 @@ import {
   query, 
   where,
   onSnapshot,
-  enableIndexedDbPersistence 
+   
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -89,7 +91,7 @@ export function initFirebase(customConfig = null) {
     } else {
       app = getApp();
     }
-    db = getFirestore(app);
+    db = db || initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
     auth = getAuth(app);
 
     return { isConnected: true, app, db, auth };

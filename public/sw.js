@@ -1,81 +1,25 @@
-// Service Worker for Shezad Children Academy Desktop & Mobile App
-const CACHE_NAME = 'shezad-academy-v2.7-session-dues';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-  '/favicon.svg'
-];
-
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Failed to cache some static assets on install:', err);
-      });
-    })
-  );
+// Replaced by the build with the complete, content-versioned app shell.
+const CACHE_NAME = 'sca-app-__BUILD_ID__';
+const ASSETS = __PRECACHE_ASSETS__;
+self.addEventListener('install', event => {
+  // A failed download must never replace the last working offline version.
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
 });
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
+self.addEventListener('message', event => {
+  if (event.data?.type === 'ACTIVATE_UPDATE') self.skipWaiting();
 });
-
-// Network-First Strategy for HTML Navigation; Cache-Fallback for Offline
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener('activate', event => {
+  // Keep old app assets available for other tabs with unfinished forms.
+  // IndexedDB and school records are never touched by software updates.
+  event.waitUntil(self.clients.claim());
+});
+self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  // Ignore cross-origin API calls & Firestore
-  if (url.origin !== self.location.origin) {
-    return;
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(caches.open(CACHE_NAME).then(cache => cache.match('/index.html')));
+  } else if (ASSETS.includes(url.pathname)) {
+    event.respondWith(caches.open(CACHE_NAME).then(async cache =>
+      (await cache.match(url.pathname)) || fetch(event.request)));
   }
-
-  // Navigation requests (HTML page): Network first, fallback to cache
-  if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match('/index.html') || caches.match('/');
-        })
-    );
-    return;
-  }
-
-  // Static assets: Stale-while-revalidate
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
-  );
 });
-
