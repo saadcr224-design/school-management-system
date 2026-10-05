@@ -18,7 +18,7 @@ export default function SchoolLogo({
     profile = null;
   }
 
-  const logoUrl = customLogoUrl !== null ? customLogoUrl : profile?.logoUrl;
+  const logoUrl = (customLogoUrl !== null ? customLogoUrl : profile?.logoUrl) || '/icons/sca-192.png';
   const schoolName = customName || profile?.name || 'SHEZAD CHILDREN ACADEMY';
   const schoolTagline = customTagline || profile?.tagline || 'Schools & Colleges';
 
