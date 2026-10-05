@@ -110,7 +110,7 @@ export default function SoftwareUpdateModal() {
             </h5>
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: '#64748b', lineHeight: 1.7 }}>
               <li><strong>Offline access:</strong> Open online once and wait for the offline-ready message.</li>
-              <li><strong>10,000 students:</strong> Larger device storage and paginated student lists.</li>
+              <li><strong>100,000 students:</strong> Larger device storage and paginated student lists.</li>
               <li><strong>Automatic updates:</strong> Published releases download when connected.</li>
               <li><strong>Session transfers:</strong> Student details and outstanding dues stay together.</li>
             </ul>

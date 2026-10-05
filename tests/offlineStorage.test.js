@@ -14,13 +14,13 @@ window.localStorage = {
   getItem: key => legacy.get(key) ?? null
 };
 const storage = await import('../src/services/durableStorage.js');
-test('migrates legacy data once and persists 10,000 full records beyond localStorage size', async () => {
+test('migrates legacy data once and persists 100,000 full records beyond localStorage size', async () => {
   await storage.initializeStorage();
   assert.equal(storage.durableStorage.getItem('peace_students'), legacy.get('peace_students'));
   assert.equal(storage.durableStorage.getItem('unrelated'), null);
-  const records = Array.from({ length: 10000 }, (_, i) => ({ id: `std-${i}`, name: `Student ${i}`, balance: i, notes: 'x'.repeat(700) }));
+  const records = Array.from({ length: 100000 }, (_, i) => ({ id: `std-${i}`, name: `Student ${i}`, fatherName: 'Guardian '+i, rollNo: 'MAIN-'+i, campus: 'MAIN', classGrade: '9th', section: 'A', phone: '03000000000', address: 'Test address', admissionDate: '2026-04-01', monthlyFee: 4500, transportFee: 500, feeHistory: [{ effectiveDate: '2026-04-01', monthlyFee: 4500 }], balance: i, notes: 'x'.repeat(700) }));
   const payload = JSON.stringify(records);
-  assert.ok(payload.length > 7_000_000);
+  assert.ok(payload.length > 70_000_000);
   storage.durableStorage.setItem('peace_students', payload);
   storage.durableStorage.removeItem('sca_academic_sessions');
   await storage.flushStorage();
@@ -30,8 +30,8 @@ test('migrates legacy data once and persists 10,000 full records beyond localSto
     const request = db.transaction('records').objectStore('records').get('peace_students');
     request.onsuccess = () => resolve(request.result);
   });
-  assert.equal(JSON.parse(stored).length, 10000);
-  assert.equal(JSON.parse(stored)[9999].balance, 9999);
+  assert.equal(JSON.parse(stored).length, 100000);
+  assert.deepEqual(JSON.parse(stored)[99999], records[99999]);
   const reloaded = await import('../src/services/durableStorage.js?reload');
   await reloaded.initializeStorage();
   assert.equal(reloaded.durableStorage.getItem('peace_students'), payload);

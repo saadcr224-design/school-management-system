@@ -47,7 +47,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
       const isFeePaid = outstanding === 0;
 
       // Find first unpaid month / slip
-      const firstUnpaidMonth = yearlyLedger.months.find(m => m.status !== 'Paid');
+      // Retain summaries only; full ledgers are computed by the details modal.
       const latestUnpaidSlip = studentSlips.find(s => s.status !== 'Paid' || (s.totalAmount - (s.amountPaid || 0) > 0));
 
       return {
@@ -57,8 +57,6 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
         outstandingBalance: outstanding,
         isFeePaid,
         feeStatus: isFeePaid ? 'Paid' : 'Unpaid',
-        yearlyLedger,
-        firstUnpaidMonth,
         latestUnpaidSlip
       };
     });
@@ -69,7 +67,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
   const totalUnpaidStudentsCount = studentsWithFeeStats.filter(s => !s.isFeePaid).length;
   const totalOutstandingArrears = studentsWithFeeStats.reduce((sum, s) => sum + s.outstandingBalance, 0);
 
-  const filtered = studentsWithFeeStats.filter(s => {
+  const filtered = useMemo(() => studentsWithFeeStats.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.fatherName && s.fatherName.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -81,7 +79,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
       (feeStatusFilter === 'UNPAID' && !s.isFeePaid);
 
     return matchesSearch && matchesCampus && matchesClass && matchesFeeStatus;
-  });
+  }), [studentsWithFeeStats, searchTerm, selectedCampusFilter, selectedClassFilter, feeStatusFilter]);
 
   useEffect(() => { setPage(1); }, [searchTerm, selectedCampusFilter, selectedClassFilter, feeStatusFilter]);
   const pages = Math.max(1, Math.ceil(filtered.length / 50));
@@ -92,7 +90,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
 
   const handleExportStudentsCSV = () => {
     let title = feeStatusFilter === 'PAID' ? 'Fee_Paid_Students' : feeStatusFilter === 'UNPAID' ? 'Fee_Unpaid_Students' : 'All_Enrolled_Students';
-    let csvContent = `data:text/csv;charset=utf-8,Roll No,Student Name,Father Name,Class,Section,Campus,Phone,Monthly Fee,Transport Fee,Total Billed,Total Paid,Outstanding Arrears,Fee Status\n`;
+    let csvContent = `Roll No,Student Name,Father Name,Class,Section,Campus,Phone,Monthly Fee,Transport Fee,Total Billed,Total Paid,Outstanding Arrears,Fee Status\n`;
     
     filtered.forEach(s => {
       const row = [
@@ -113,13 +111,14 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
       csvContent += row + '\n';
     });
 
-    const encodedUri = encodeURI(csvContent);
+    const encodedUri = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
     link.setAttribute('download', `${title}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(encodedUri), 1000);
     showToast(`✓ Exported ${filtered.length} student records to CSV!`, 'success');
   };
 
@@ -606,7 +605,7 @@ export default function StudentsView({ onOpenAdmissionModal, onOpenFeeModal, onO
           </table>
           <div className="no-print" style={{ display: 'flex', gap: 16, padding: 16, alignItems: 'center' }}>
             <button className="btn-secondary" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
-            <span>Page {currentPage} of {pages} · {filtered.length.toLocaleString()} students · Capacity 10,000 per session</span>
+            <span>Page {currentPage} of {pages} · {filtered.length.toLocaleString()} students · Capacity 100,000 per session</span>
             <button className="btn-secondary" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Next</button>
           </div>
         </div>

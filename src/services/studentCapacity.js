@@ -1,7 +1,9 @@
-export const MAX_STUDENTS = 10000;
+export const MAX_STUDENTS = 100000;
 export function assertStudentCapacity(records, additional = 1) {
-  if (records.filter(s => !s.movedToSession).length + additional > MAX_STUDENTS) {
-    throw new Error('This session allows a maximum of 10,000 students.');
+  let count = additional;
+  for (const student of records) if (!student.movedToSession) count++;
+  if (count > MAX_STUDENTS) {
+    throw new Error('This session allows a maximum of 100,000 students.');
   }
 }
 export function nextRollNumber(records, campus) {
